@@ -10,12 +10,15 @@ public class PyramidEffects : MonoBehaviour
     #endregion
     #region Privates
 
+    //Bool to see if nescessary textures and shader variables are initialized
     private bool isInit = false;
+   
     //Creates the nescessary RenderTextures
     private RenderTexture ping;
     private RenderTexture pong;
     private RenderTexture temp;
 
+    //The size of the screen last frame;
     private Vector2 lastScreenSize;
 
     //Creates the Material to be used in the Graphics.Blit function
@@ -36,8 +39,10 @@ public class PyramidEffects : MonoBehaviour
         material = new Material(Shader.Find("Hidden/PyramidBlur"));
     }
 
+    //Start smart
     void Start()
     {
+        //Get the initial screen size
         lastScreenSize = new Vector2(Screen.width, Screen.height);
     }
 
@@ -47,27 +52,37 @@ public class PyramidEffects : MonoBehaviour
     /// <param name="destination"> The final RenderTexture actually displayed.</param>
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them
         if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source);
 
+        //Dispatch the compute shader
         computeTest.Dispatch(0, temp.width / 8, temp.height / 8, 1);   
 
+        //Blit that shit
         Graphics.Blit(source, destination);
     }
 
+    /// <summary>
+    /// Creates a texture that is the next power of 2, creates it on the GPU then sets the compute shader uniforms.</summary>
+    /// <param name="source"> Reference to the source texture.</param>
     void Init(RenderTexture source)
     {
         int size = nextPow2(source);
 
+        //Check if there is already a texture, if there is then release the old one before making a new one
         if (temp != null) temp.Release();
 
+        //Create the temp texture
         temp = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
         temp.enableRandomWrite = true;
         temp.generateMips = true;
         temp.Create();
 
+        //Set the shader uniforms
         computeTest.SetTexture(0, "source", source);
         computeTest.SetTexture(0, "dest", temp);
 
+        // TODO: Remove at some point
         plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", temp);
 
         isInit = true;
