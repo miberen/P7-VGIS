@@ -10,11 +10,13 @@ public class PyramidEffects : MonoBehaviour
     #endregion
     #region Privates
 
-
+    private bool isInit = false;
     //Creates the nescessary RenderTextures
     private RenderTexture ping;
     private RenderTexture pong;
     private RenderTexture temp;
+
+    private Vector2 lastScreenSize;
 
     //Creates the Material to be used in the Graphics.Blit function
     private Material material;
@@ -34,13 +36,30 @@ public class PyramidEffects : MonoBehaviour
         material = new Material(Shader.Find("Hidden/PyramidBlur"));
     }
 
+    void Start()
+    {
+        lastScreenSize = new Vector2(Screen.width, Screen.height);
+    }
+
     /// <summary>
     /// Overrides the OnRenderImage function.</summary>
     /// <param name="source"> The RenderTexture about to be displayed on the screen.</param>
     /// <param name="destination"> The final RenderTexture actually displayed.</param>
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source);
+
+        computeTest.Dispatch(0, temp.width / 8, temp.height / 8, 1);   
+
+        Graphics.Blit(source, destination);
+    }
+
+    void Init(RenderTexture source)
+    {
         int size = nextPow2(source);
+
+        if (temp != null) temp.Release();
+
         temp = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
         temp.enableRandomWrite = true;
         temp.generateMips = true;
@@ -48,13 +67,11 @@ public class PyramidEffects : MonoBehaviour
 
         computeTest.SetTexture(0, "source", source);
         computeTest.SetTexture(0, "dest", temp);
-        computeTest.Dispatch(0, temp.width / 8, temp.height / 8, 1);
 
         plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", temp);
 
-        Graphics.Blit(source, destination);
+        isInit = true;
     }
-
     /// <summary>
     /// Generates a list of power of 2s up to 13 (8192).</summary>
     void genPow2()
@@ -78,10 +95,5 @@ public class PyramidEffects : MonoBehaviour
             if (biggest > i) final = pow2s[pow2s.IndexOf(i) + 1];
         }
         return final;
-    }
-
-    void OnDestroy()
-    {
-        temp.Release();
     }
 }
