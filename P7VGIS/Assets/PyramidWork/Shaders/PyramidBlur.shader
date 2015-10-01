@@ -16,7 +16,6 @@
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
-
 			sampler2D _MainTex;
 
 			fixed4 frag(v2f_img i) : SV_Target

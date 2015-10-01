@@ -6,9 +6,11 @@ public class PyramidEffects : MonoBehaviour
 {
     #region Publics
     public GameObject plane1;
-    public GameObject plane2;
+    public ComputeShader computeTest;
     #endregion
     #region Privates
+
+
     //Creates the nescessary RenderTextures
     private RenderTexture ping;
     private RenderTexture pong;
@@ -39,13 +41,18 @@ public class PyramidEffects : MonoBehaviour
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         int size = nextPow2(source);
-        temp = new RenderTexture(size, size, 0);
+        temp = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
+        temp.enableRandomWrite = true;
+        temp.generateMips = true;
+        temp.Create();
 
-        Graphics.Blit(source, temp, new Material(Shader.Find("Hidden/copyRTex")));
+        computeTest.SetTexture(0, "source", source);
+        computeTest.SetTexture(0, "dest", temp);
+        computeTest.Dispatch(0, temp.width / 8, temp.height / 8, 1);
 
         plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", temp);
 
-        Graphics.Blit(source, destination, material);
+        Graphics.Blit(source, destination);
     }
 
     /// <summary>
@@ -71,5 +78,10 @@ public class PyramidEffects : MonoBehaviour
             if (biggest > i) final = pow2s[pow2s.IndexOf(i) + 1];
         }
         return final;
+    }
+
+    void OnDestroy()
+    {
+        temp.Release();
     }
 }

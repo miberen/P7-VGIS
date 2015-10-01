@@ -17,6 +17,7 @@
 
 			#include "UnityCG.cginc"
 
+			RWTexture2D<float4> _Tex;
 			sampler2D _MainTex;
 
 			fixed4 frag(v2f_img i) : SV_Target
