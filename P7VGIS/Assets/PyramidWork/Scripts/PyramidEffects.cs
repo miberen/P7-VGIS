@@ -12,17 +12,13 @@ public class PyramidEffects : MonoBehaviour
 
     //Bool to see if nescessary textures and shader variables are initialized
     private bool isInit = false;
-   
+
     //Creates the nescessary RenderTextures
-    private RenderTexture ping;
-    private RenderTexture pong;
-    private RenderTexture temp;
+    private List<RenderTexture> analyzeList = new List<RenderTexture>();
+    private List<RenderTexture> synthesizeList = new List<RenderTexture>();
 
     //The size of the screen last frame;
     private Vector2 lastScreenSize;
-
-    //Creates the Material to be used in the Graphics.Blit function
-    private Material material;
 
     //List of power of 2s
     private List<int> pow2s = new List<int>();
@@ -32,11 +28,8 @@ public class PyramidEffects : MonoBehaviour
     void Awake()
     {
         //Generates the list of pow2s
-        genPow2();
+        GenPow2();
 
-        //Initiates the Material with pyramid shader 
-        // TODO: Make the actual shader
-        material = new Material(Shader.Find("Hidden/PyramidBlur"));
     }
 
     //Start smart
@@ -53,10 +46,13 @@ public class PyramidEffects : MonoBehaviour
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them
-        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source);
+        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source, 3);
 
-        //Dispatch the compute shader
-        computeTest.Dispatch(0, temp.width / 8, temp.height / 8, 1);   
+        Refresh();
+
+        plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[0]);
+
+        //Analyze(analyzeList[0], 2);  
 
         //Blit that shit
         Graphics.Blit(source, destination);
@@ -65,31 +61,52 @@ public class PyramidEffects : MonoBehaviour
     /// <summary>
     /// Creates a texture that is the next power of 2, creates it on the GPU then sets the compute shader uniforms.</summary>
     /// <param name="source"> Reference to the source texture.</param>
-    void Init(RenderTexture source)
+    void Init(RenderTexture source, int levels)
     {
-        int size = nextPow2(source);
 
-        //Check if there is already a texture, if there is then release the old one before making a new one
-        if (temp != null) temp.Release();
+        analyzeList.Clear();
+        synthesizeList.Clear();
 
-        //Create the temp texture
-        temp = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
-        temp.enableRandomWrite = true;
-        temp.generateMips = true;
-        temp.Create();
+        int size = NextPow2(source);
+        for (int i = 0; i < levels; i++)
+        {
+            analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size)-i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32));
+            analyzeList[i].enableRandomWrite = true;
+            analyzeList[i].Create();
+        }
 
-        //Set the shader uniforms
-        computeTest.SetTexture(0, "source", source);
-        computeTest.SetTexture(0, "dest", temp);
+        for(int i = 0; i > levels; i++)
+        {
+            synthesizeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) + i], pow2s[pow2s.IndexOf(size) + i], 0, RenderTextureFormat.ARGB32));
+            synthesizeList[i].enableRandomWrite = true;
+            synthesizeList[i].Create();
+        }
 
-        // TODO: Remove at some point
-        plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", temp);
-
+        lastScreenSize = new Vector2(Screen.width, Screen.height);
         isInit = true;
+    }
+
+    void Refresh()
+    {       
+        //Check if there is already a texture, if there is then release the old one before making a new one
+        foreach (RenderTexture rT in analyzeList)
+        {
+            if (rT.IsCreated())
+                rT.Release();
+        }
+
+        foreach (RenderTexture rT in synthesizeList)
+        {
+            if (rT.IsCreated())
+                rT.Release();
+        }
+        
+        MakePow2(analyzeList[0]);
+
     }
     /// <summary>
     /// Generates a list of power of 2s up to 13 (8192).</summary>
-    void genPow2()
+    void GenPow2()
     {
         for (int i = 1; i < 14; i++)
         {
@@ -100,7 +117,7 @@ public class PyramidEffects : MonoBehaviour
     /// <summary>
     /// Finds the power of 2 image which will fit the source image ( 951x100 -> 1024x1024 ).</summary>
     /// <param name="source"> The source RenderTexture to find a fit for.</param>
-    int nextPow2(RenderTexture source)
+    int NextPow2(RenderTexture source)
     {
         int biggest = Mathf.Max(source.width, source.height);
         int final = 0;
@@ -110,5 +127,30 @@ public class PyramidEffects : MonoBehaviour
             if (biggest > i) final = pow2s[pow2s.IndexOf(i) + 1];
         }
         return final;
+    }
+
+    void MakePow2(RenderTexture source)
+    {
+        //Set the shader uniforms
+        computeTest.SetTexture(0, "source", source);
+        computeTest.SetTexture(0, "dest", analyzeList[0]);
+
+        //Dispatch the compute shader
+        computeTest.Dispatch(0, analyzeList[0].width / 8, analyzeList[0].height / 8, 1);
+    }
+
+    RenderTexture MakeNonPow2(RenderTexture source)
+    {
+        return source;
+    }
+
+    void Analyze(RenderTexture source, int levels)
+    {
+        
+    }
+
+    void Synthesize(RenderTexture source, int levels)
+    {
+        
     }
 }

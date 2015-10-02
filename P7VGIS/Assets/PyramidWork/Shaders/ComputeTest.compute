@@ -1,10 +1,12 @@
-﻿#pragma kernel CSMain
+﻿#pragma kernel CopyImageAndEdge
+#pragma kernel Analyze
+#pragma kernel Synthesize
  
 Texture2D<float4> source;
 RWTexture2D<float4> dest;
  
 [numthreads(8,8,1)]
-void CSMain (uint2 id : SV_DispatchThreadID)
+void CopyImageAndEdge (uint2 id : SV_DispatchThreadID)
 {
     uint sW, sH;
     source.GetDimensions(sW, sH);
@@ -19,4 +21,17 @@ void CSMain (uint2 id : SV_DispatchThreadID)
 	else if(id.x >= sW)
 		dest[id] = source[uint2(sW-1, id.y)];
 	else dest[id] = source[id];
+}
+
+[numthreads(8,8,1)]
+void Analyze (uint id : SV_DispatchThreadID)
+{
+	//dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
+	dest[id] = float4(1.0, 0.0, 0.0, 1.0);
+}
+
+[numthreads(8,8,1)]
+void Synthesize (uint id : SV_DispatchThreadID)
+{
+	dest[id] = float4(1.0, 0.0, 0.0, 1.0);
 }
