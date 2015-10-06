@@ -11,6 +11,7 @@ public class PyramidEffects : MonoBehaviour
     #region Privates
 
     //Bool to see if nescessary textures and shader variables are initialized
+    private int index = 0;
     private bool isInit = false;
 
     //Creates the nescessary RenderTextures
@@ -29,7 +30,6 @@ public class PyramidEffects : MonoBehaviour
     {
         //Generates the list of pow2s
         GenPow2();
-
     }
 
     //Start smart
@@ -42,14 +42,23 @@ public class PyramidEffects : MonoBehaviour
     void Update()
     {
         if (Input.GetKeyDown("k"))
-        {
-            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[0]);
+        {           
+            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
             foreach (RenderTexture rT in analyzeList)
             {
                 Debug.Log(rT.height.ToString() + "x" + rT.width.ToString());
                 Debug.Log(rT.IsCreated().ToString());
                 Debug.Log(rT.enableRandomWrite.ToString());
             }
+        }
+
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            index += 1;
+            if (index >= analyzeList.Count - 1)
+                index = 0;
+
+            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
         }
     }
 
@@ -60,11 +69,11 @@ public class PyramidEffects : MonoBehaviour
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them
-        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source, 3);
+        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source, 6);
 
         Refresh(source);
 
-        Analyze(2);  
+        Analyze(6);  
 
         //Blit that shit
         Graphics.Blit(source, destination);
@@ -80,10 +89,11 @@ public class PyramidEffects : MonoBehaviour
         synthesizeList.Clear();
 
         int size = NextPow2(source);
-        for (int i = 0; i < levels; i++)
+        for (int i = 0; i < levels+1; i++)
         {
             analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size)-i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32));
             analyzeList[i].enableRandomWrite = true;
+            analyzeList[i].filterMode = FilterMode.Point;
             analyzeList[i].Create();
         }
 
@@ -147,26 +157,31 @@ public class PyramidEffects : MonoBehaviour
     void MakePow2(RenderTexture source)
     {
         //Set the shader uniforms
-        computeTest.SetTexture(0, "source", source);
-        computeTest.SetTexture(0, "dest", analyzeList[0]);
+        computeTest.SetTexture(computeTest.FindKernel("MakePow2"), "source", source);
+        computeTest.SetTexture(computeTest.FindKernel("MakePow2"), "dest", analyzeList[0]);
 
         //Dispatch the compute shader
-        computeTest.Dispatch(0, analyzeList[0].width / 8, analyzeList[0].height / 8, 1);
+        computeTest.Dispatch(computeTest.FindKernel("MakePow2"), analyzeList[0].width / 8, analyzeList[0].height / 8, 1);
     }
 
-    RenderTexture MakeNonPow2(RenderTexture source)
+    void MakeNonPow2(RenderTexture source)
     {
-        return source;
+        //Set the shader uniforms
+        computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "source", source);
+        computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "dest", analyzeList[0]);
+
+        //Dispatch the compute shader
+        computeTest.Dispatch(computeTest.FindKernel("MakeNPow2"), analyzeList[0].width / 8, analyzeList[0].height / 8, 1);
     }
 
     void Analyze(int levels)
     {
-            for(int i = 0; i >= levels; i++)
+        for(int i = 0; i <= levels-1; i++)
         {
-            computeTest.SetTexture(computeTest.FindKernel("Analyze"), "source", analyzeList[0+i]);
+            computeTest.SetTexture(computeTest.FindKernel("Analyze"), "source", analyzeList[i]);
             computeTest.SetTexture(computeTest.FindKernel("Analyze"), "dest", analyzeList[i+1]);
 
-            computeTest.Dispatch(1, analyzeList[i].width / 8, analyzeList[i].height / 8, 1);
+            computeTest.Dispatch(computeTest.FindKernel("Analyze"), analyzeList[i+1].width / 8, analyzeList[i+1].height / 8, 1);
         }
     }
 
