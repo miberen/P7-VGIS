@@ -17,6 +17,7 @@ public class PyramidEffects : MonoBehaviour
     //Creates the nescessary RenderTextures
     public List<RenderTexture> analyzeList = new List<RenderTexture>();
     private List<RenderTexture> synthesizeList = new List<RenderTexture>();
+    private RenderTexture done;
 
     //The size of the screen last frame;
     private Vector2 lastScreenSize;
@@ -42,8 +43,8 @@ public class PyramidEffects : MonoBehaviour
     void Update()
     {
         if (Input.GetKeyDown("k"))
-        {           
-            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
+        {
+            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
             foreach (RenderTexture rT in analyzeList)
             {
                 Debug.Log(rT.height.ToString() + "x" + rT.width.ToString());
@@ -58,7 +59,7 @@ public class PyramidEffects : MonoBehaviour
             if (index >= analyzeList.Count - 1)
                 index = 0;
 
-            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
+            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
         }
     }
 
@@ -73,7 +74,9 @@ public class PyramidEffects : MonoBehaviour
 
         Refresh(source);
 
-        Analyze(6);  
+        Analyze(6);
+
+        MakeNonPow2(analyzeList[index]);
 
         //Blit that shit
         Graphics.Blit(source, destination);
@@ -84,7 +87,6 @@ public class PyramidEffects : MonoBehaviour
     /// <param name="source"> Reference to the source texture.</param>
     void Init(RenderTexture source, int levels)
     {
-
         analyzeList.Clear();
         synthesizeList.Clear();
 
@@ -104,12 +106,22 @@ public class PyramidEffects : MonoBehaviour
             synthesizeList[i].Create();
         }
 
+        done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32);
+        done.enableRandomWrite = true;
+        done.Create();
+
         lastScreenSize = new Vector2(Screen.width, Screen.height);
         isInit = true;
     }
 
     void Refresh(RenderTexture source)
     {
+
+        if(done.IsCreated())
+        {
+            done.Release();
+            done.Create();
+        }
         //Check if there is already a texture, if there is then release the old one before making a new one
         foreach (RenderTexture rT in analyzeList)
         {
@@ -123,7 +135,10 @@ public class PyramidEffects : MonoBehaviour
         foreach (RenderTexture rT in synthesizeList)
         {
             if (rT.IsCreated())
+            {
                 rT.Release();
+                rT.Create();
+            }
         }
         
         MakePow2(source);
@@ -167,10 +182,10 @@ public class PyramidEffects : MonoBehaviour
     {
         //Set the shader uniforms
         computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "source", source);
-        computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "dest", analyzeList[0]);
+        computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "dest", done);
 
         //Dispatch the compute shader
-        computeTest.Dispatch(computeTest.FindKernel("MakeNPow2"), analyzeList[0].width / 8, analyzeList[0].height / 8, 1);
+        computeTest.Dispatch(computeTest.FindKernel("MakeNPow2"), source.width / 8, source.height / 8, 1);
     }
 
     void Analyze(int levels)
