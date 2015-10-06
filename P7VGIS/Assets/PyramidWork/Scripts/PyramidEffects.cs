@@ -127,7 +127,6 @@ public class PyramidEffects : MonoBehaviour
         }
         
         MakePow2(source);
-
     }
     /// <summary>
     /// Generates a list of power of 2s up to 13 (8192).</summary>

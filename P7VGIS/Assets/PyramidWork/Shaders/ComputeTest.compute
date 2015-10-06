@@ -1,7 +1,7 @@
 ﻿#pragma kernel MakePow2
 #pragma kernel MakeNPow2
 #pragma kernel Analyze
-//#pragma kernel Synthesize
+#pragma kernel Synthesize
  
 Texture2D<float4> source;
 RWTexture2D<float4> dest;
@@ -52,7 +52,7 @@ void Analyze (uint2 id : SV_DispatchThreadID)
 
 // TODO: Make it work
 [numthreads(8,8,1)]
-void Synthesize (uint id : SV_DispatchThreadID)
+void Synthesize (uint2 id : SV_DispatchThreadID)
 {
 	dest[id] = float4(1.0, 0.0, 0.0, 1.0);
 }
