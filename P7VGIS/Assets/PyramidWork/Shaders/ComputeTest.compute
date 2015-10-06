@@ -1,6 +1,6 @@
 ﻿#pragma kernel CopyImageAndEdge
 #pragma kernel Analyze
-#pragma kernel Synthesize
+//#pragma kernel Synthesize
  
 Texture2D<float4> source;
 RWTexture2D<float4> dest;
@@ -24,14 +24,14 @@ void CopyImageAndEdge (uint2 id : SV_DispatchThreadID)
 }
 
 [numthreads(8,8,1)]
-void Analyze (uint id : SV_DispatchThreadID)
+void Analyze (uint2 id : SV_DispatchThreadID)
 {
 	//dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
 	dest[id] = float4(1.0, 0.0, 0.0, 1.0);
 }
 
-[numthreads(8,8,1)]
-void Synthesize (uint id : SV_DispatchThreadID)
-{
-	dest[id] = float4(1.0, 0.0, 0.0, 1.0);
-}
+//[numthreads(8,8,1)]
+//void Synthesize (uint id : SV_DispatchThreadID)
+//{
+//	dest[id] = float4(1.0, 0.0, 0.0, 1.0);
+//}
