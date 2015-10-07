@@ -9,25 +9,49 @@ RWTexture2D<float4> dest;
 [numthreads(32,32,1)]
 void MakePow2 (uint2 id : SV_DispatchThreadID)
 {
+	uint2 offset = uint2(100, 100);
     uint sW, sH;
     source.GetDimensions(sW, sH);
     uint dW, dH;
     dest.GetDimensions(dW, dH);
 
+
+
+	// Copies BOTTOM LEFT corner pixel
+	if(id.x < offset.x && id.y < offset.y)
+		dest[id] = source[uint2(0, 0)];
+	// Copies BOTTOM RIGHT corner pixel
+	else if(id.x >= sW + offset.x && id.y < offset.y)
+		dest[id] = source[uint2(sW - 1, 0)];
+	// Copies TOP LEFT corner pixel
+	else if(id.x < offset.x && id.y >= sH + offset.y)
+		dest[id] = source[uint2(0, sH - 1)];
+	// Copies BOTTOM EDGE
+	else if(id.y < offset.y)
+		dest[id] = source[uint2(id.x - offset.x, 0)];
+	// Copies LEFT EDGE
+	else if(id.x < offset.x)
+		dest[id] = source[uint2(0, id.y - offset.y)];
+	// Copies TOP RIGHT corner pixel
     if(id.x >= sW && id.y >= sH)
-		dest[id] = source[uint2(sW-1, sH-1)];
+		dest[id + offset] = source[uint2(sW-1, sH-1)];
+	// Copies TOP EDGE
     else if(id.y >= sH)
-		dest[id] = source[uint2(id.x, sH-1)];
+		dest[id + offset] = source[uint2(id.x, sH-1)];
+	// Copies RIGHT EDGE
     else if(id.x >= sW)
-		dest[id] = source[uint2(sW-1, id.y)];
-    else dest[id] = source[id];
+		dest[id + offset] = source[uint2(sW-1, id.y)];
+	//Actual image
+    else dest[id + offset] = source[id];
+
+
 }
 
 // TODO: Make it work
 [numthreads(32, 32, 1)]
 void MakeNPow2 (uint2 id : SV_DispatchThreadID)
 {
-    dest[id] = source[id];
+    dest[id] = source[id + uint2(100, 100)];
 }
 
 
@@ -41,7 +65,16 @@ void Analyze (uint2 id : SV_DispatchThreadID)
 [numthreads(32,32,1)]
 void Synthesize (uint2 id : SV_DispatchThreadID)
 {
+	/*
+	if(id.x = 0)
+	
+	else if (id.y = 0)
+
+	else if 
+	dest[id] = 1.0/16.0*
+	*/
     dest[id] = float4(1.0, 0.0, 0.0, 1.0);
+	
 }
 
 

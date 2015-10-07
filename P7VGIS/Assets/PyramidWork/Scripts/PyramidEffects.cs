@@ -50,9 +50,11 @@ public class PyramidEffects : MonoBehaviour
             plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
             foreach (RenderTexture rT in analyzeList)
             {
-                Debug.Log(rT.height.ToString() + "x" + rT.width.ToString());
-                Debug.Log(rT.IsCreated().ToString());
-                Debug.Log(rT.enableRandomWrite.ToString());
+                Debug.Log("analyze:" + rT.height.ToString() + "x" + rT.width.ToString());
+            }
+            foreach (RenderTexture rT in synthesizeList)
+            {
+                Debug.Log("synthesize" + rT.height.ToString() + "x" + rT.width.ToString());
             }
         }
 
@@ -93,17 +95,17 @@ public class PyramidEffects : MonoBehaviour
         synthesizeList.Clear();
 
         int size = NextPow2(source);
-        for (int i = 0; i < levels+1; i++)
+        for (int i = 0; i < levels; i++)
         {
-            analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size)-i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32));
+            analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) - i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32));
             analyzeList[i].enableRandomWrite = true;
             analyzeList[i].filterMode = filtMode;
             analyzeList[i].Create();
         }
 
-        for(int i = 0; i > levels; i++)
+        for(int i = 0; i < levels; i++)
         {
-            synthesizeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) + i], pow2s[pow2s.IndexOf(size) + i], 0, RenderTextureFormat.ARGB32));
+            synthesizeList.Add(new RenderTexture(analyzeList[levels - 1 - i].width, analyzeList[levels - 1 - i].height, 0, RenderTextureFormat.ARGB32));
             synthesizeList[i].enableRandomWrite = true;
             synthesizeList[i].filterMode = filtMode;
             synthesizeList[i].Create();
@@ -194,17 +196,24 @@ public class PyramidEffects : MonoBehaviour
 
     void Analyze(int levels)
     {
-        for(int i = 0; i <= levels-1; i++)
+        for(int i = 0; i < levels - 1; i++)
         {
             computeTest.SetTexture(computeTest.FindKernel("Analyze"), "source", analyzeList[i]);
-            computeTest.SetTexture(computeTest.FindKernel("Analyze"), "dest", analyzeList[i+1]);
+            computeTest.SetTexture(computeTest.FindKernel("Analyze"), "dest", analyzeList[i + 1]);
 
-            computeTest.Dispatch(computeTest.FindKernel("Analyze"), (int)Mathf.Ceil(analyzeList[i+1].width / 32), (int)Mathf.Ceil(analyzeList[i+1].height / 32), 1);
+            computeTest.Dispatch(computeTest.FindKernel("Analyze"), (int)Mathf.Ceil(analyzeList[i + 1].width / 32), (int)Mathf.Ceil(analyzeList[i + 1].height / 32), 1);
         }
+        synthesizeList[0] = analyzeList[levels - 1];
     }
 
-    void Synthesize(RenderTexture source, int levels)
+    void Synthesize(int levels)
     {
-        
+        for (int i = 0; i < levels - 1; i++)
+        {
+            computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "source", synthesizeList[i]);
+            computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "dest", synthesizeList[i + 1]);
+
+            computeTest.Dispatch(computeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(analyzeList[i + 1].width / 32), (int)Mathf.Ceil(analyzeList[i + 1].height / 32), 1);
+        }
     }
 }
