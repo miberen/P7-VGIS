@@ -6,7 +6,9 @@ public class PyramidEffects : MonoBehaviour
 {
     #region Publics
     public GameObject plane1;
+    public GameObject plane2;
     public ComputeShader computeTest;
+    public FilterMode filtMode;
     #endregion
     #region Privates
 
@@ -44,7 +46,8 @@ public class PyramidEffects : MonoBehaviour
     {
         if (Input.GetKeyDown("k"))
         {
-            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
+            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
+            plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
             foreach (RenderTexture rT in analyzeList)
             {
                 Debug.Log(rT.height.ToString() + "x" + rT.width.ToString());
@@ -58,8 +61,7 @@ public class PyramidEffects : MonoBehaviour
             index += 1;
             if (index >= analyzeList.Count - 1)
                 index = 0;
-
-            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
+            plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
         }
     }
 
@@ -76,7 +78,7 @@ public class PyramidEffects : MonoBehaviour
 
         Analyze(6);
 
-        MakeNonPow2(analyzeList[index]);
+        MakeNonPow2(analyzeList[0]);
 
         //Blit that shit
         Graphics.Blit(source, destination);
@@ -95,7 +97,7 @@ public class PyramidEffects : MonoBehaviour
         {
             analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size)-i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32));
             analyzeList[i].enableRandomWrite = true;
-            analyzeList[i].filterMode = FilterMode.Point;
+            analyzeList[i].filterMode = filtMode;
             analyzeList[i].Create();
         }
 
@@ -103,11 +105,13 @@ public class PyramidEffects : MonoBehaviour
         {
             synthesizeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) + i], pow2s[pow2s.IndexOf(size) + i], 0, RenderTextureFormat.ARGB32));
             synthesizeList[i].enableRandomWrite = true;
+            synthesizeList[i].filterMode = filtMode;
             synthesizeList[i].Create();
         }
 
         done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32);
         done.enableRandomWrite = true;
+        done.filterMode = filtMode;
         done.Create();
 
         lastScreenSize = new Vector2(Screen.width, Screen.height);
@@ -175,7 +179,7 @@ public class PyramidEffects : MonoBehaviour
         computeTest.SetTexture(computeTest.FindKernel("MakePow2"), "dest", analyzeList[0]);
 
         //Dispatch the compute shader
-        computeTest.Dispatch(computeTest.FindKernel("MakePow2"), analyzeList[0].width / 8, analyzeList[0].height / 8, 1);
+        computeTest.Dispatch(computeTest.FindKernel("MakePow2"), (int)Mathf.Ceil(analyzeList[0].width / 32), (int)Mathf.Ceil(analyzeList[0].height / 32), 1);
     }
 
     void MakeNonPow2(RenderTexture source)
@@ -185,7 +189,7 @@ public class PyramidEffects : MonoBehaviour
         computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "dest", done);
 
         //Dispatch the compute shader
-        computeTest.Dispatch(computeTest.FindKernel("MakeNPow2"), source.width / 8, source.height / 8, 1);
+        computeTest.Dispatch(computeTest.FindKernel("MakeNPow2"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
     }
 
     void Analyze(int levels)
@@ -195,7 +199,7 @@ public class PyramidEffects : MonoBehaviour
             computeTest.SetTexture(computeTest.FindKernel("Analyze"), "source", analyzeList[i]);
             computeTest.SetTexture(computeTest.FindKernel("Analyze"), "dest", analyzeList[i+1]);
 
-            computeTest.Dispatch(computeTest.FindKernel("Analyze"), analyzeList[i+1].width / 8, analyzeList[i+1].height / 8, 1);
+            computeTest.Dispatch(computeTest.FindKernel("Analyze"), (int)Mathf.Ceil(analyzeList[i+1].width / 32), (int)Mathf.Ceil(analyzeList[i+1].height / 32), 1);
         }
     }
 
