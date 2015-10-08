@@ -7,6 +7,7 @@ public class PyramidEffects : MonoBehaviour
     #region Publics
     public GameObject plane1;
     public GameObject plane2;
+    public GameObject plane3;
     public ComputeShader computeTest;
     public FilterMode filtMode;
     #endregion
@@ -18,7 +19,7 @@ public class PyramidEffects : MonoBehaviour
 
     //Creates the nescessary RenderTextures
     public List<RenderTexture> analyzeList = new List<RenderTexture>();
-    private List<RenderTexture> synthesizeList = new List<RenderTexture>();
+    public List<RenderTexture> synthesizeList = new List<RenderTexture>();
     private RenderTexture done;
 
     //The size of the screen last frame;
@@ -47,7 +48,8 @@ public class PyramidEffects : MonoBehaviour
         if (Input.GetKeyDown("k"))
         {
             plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
-            plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
+            plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", synthesizeList[index]);
+            plane3.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
             foreach (RenderTexture rT in analyzeList)
             {
                 Debug.Log("analyze:" + rT.height.ToString() + "x" + rT.width.ToString());
@@ -64,6 +66,8 @@ public class PyramidEffects : MonoBehaviour
             if (index >= analyzeList.Count - 1)
                 index = 0;
             plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
+            plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", synthesizeList[index]);
+            plane3.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
         }
     }
 
@@ -74,13 +78,15 @@ public class PyramidEffects : MonoBehaviour
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
         //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them
-        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source, 6);
+        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source, 7);
 
         Refresh(source);
 
-        Analyze(6);
+        Analyze(7);
 
-        MakeNonPow2(analyzeList[0]);
+        Synthesize(7);
+
+        MakeNonPow2(synthesizeList[synthesizeList.Count-1]);
 
         //Blit that shit
         Graphics.Blit(source, destination);
@@ -213,7 +219,7 @@ public class PyramidEffects : MonoBehaviour
             computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "source", synthesizeList[i]);
             computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "dest", synthesizeList[i + 1]);
 
-            computeTest.Dispatch(computeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(analyzeList[i + 1].width / 32), (int)Mathf.Ceil(analyzeList[i + 1].height / 32), 1);
+            computeTest.Dispatch(computeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(synthesizeList[i + 1].width / 32), (int)Mathf.Ceil(synthesizeList[i + 1].height / 32), 1);
         }
     }
 }
