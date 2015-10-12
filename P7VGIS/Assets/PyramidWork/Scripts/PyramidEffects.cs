@@ -103,7 +103,7 @@ public class PyramidEffects : MonoBehaviour
         int size = NextPow2(source);
         for (int i = 0; i < levels; i++)
         {
-            analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) - i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32));
+            analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) - i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.DefaultHDR));
             analyzeList[i].enableRandomWrite = true;
             analyzeList[i].filterMode = filtMode;
             analyzeList[i].Create();
@@ -111,13 +111,13 @@ public class PyramidEffects : MonoBehaviour
 
         for(int i = 0; i < levels; i++)
         {
-            synthesizeList.Add(new RenderTexture(analyzeList[levels - 1 - i].width, analyzeList[levels - 1 - i].height, 0, RenderTextureFormat.ARGB32));
+            synthesizeList.Add(new RenderTexture(analyzeList[levels - 1 - i].width, analyzeList[levels - 1 - i].height, 0, RenderTextureFormat.DefaultHDR));
             synthesizeList[i].enableRandomWrite = true;
             synthesizeList[i].filterMode = filtMode;
             synthesizeList[i].Create();
         }
 
-        done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32);
+        done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.DefaultHDR);
         done.enableRandomWrite = true;
         done.filterMode = filtMode;
         done.Create();
