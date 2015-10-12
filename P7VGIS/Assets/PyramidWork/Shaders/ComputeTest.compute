@@ -3,18 +3,28 @@
 #pragma kernel Analyze
 #pragma kernel Synthesize
  
+// Declare functions
 float4 ApplyKernel(uint2 id, float3x3 kernel);
 //float4 ApplyKernel0_0(uint2 id);
 //float4 ApplyKernel0_1(uint2 id);
 //float4 ApplyKernel1_0(uint2 id);
 //float4 ApplyKernel1_1(uint2 id);
 
+// Variables for changing billenear sampling mode
 SamplerState _LinearClamp;
 SamplerState _LinearRepeat;
 
+// Uniforms for source and destination textures, Texture2D for read only on source, RWTexture2D for read / write access to destination texture
 Texture2D<float4> source;
 RWTexture2D<float4> dest;
 
+// Uniform for infill effect
+float4 infillColor;
+
+// Offset to stop bleeding
+static uint2 offset = uint2(50, 50);
+
+// Kernels for synthesize function
 static float3x3 kernel0_0 =
 {	
 	0,0,0,
@@ -43,10 +53,10 @@ static float3x3 kernel1_1 =
 	0,0,0
 };
 
+// Copies source into a new power of 2 destination texture, also pads the image with edge pixels
 [numthreads(32,32,1)]
 void MakePow2 (uint2 id : SV_DispatchThreadID)
 {
-	uint2 offset = uint2(100, 100);
 	uint sW, sH;
     source.GetDimensions(sW, sH);	
 
@@ -84,7 +94,7 @@ void MakePow2 (uint2 id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void MakeNPow2 (uint2 id : SV_DispatchThreadID)
 {
-    dest[id] = source[id + uint2(100, 100)];
+    dest[id] = source[id + offset];
 }
 
 

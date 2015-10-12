@@ -10,12 +10,17 @@ public class PyramidEffects : MonoBehaviour
     public GameObject plane3;
     public ComputeShader computeTest;
     public FilterMode filtMode;
+    [Range(2, 7)]
+    public int Levels;
     #endregion
     #region Privates
 
     //Bool to see if nescessary textures and shader variables are initialized
     private int index = 0;
     private bool isInit = false;
+
+    // To check if levels has changed
+    private int lastLevels;
 
     //Creates the nescessary RenderTextures
     public List<RenderTexture> analyzeList = new List<RenderTexture>();
@@ -41,6 +46,8 @@ public class PyramidEffects : MonoBehaviour
     {
         //Get the initial screen size
         lastScreenSize = new Vector2(Screen.width, Screen.height);
+
+        lastLevels = Levels;
     }
 
     void Update()
@@ -77,19 +84,19 @@ public class PyramidEffects : MonoBehaviour
     /// <param name="destination"> The final RenderTexture actually displayed.</param>
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them
-        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height)) Init(source, 7);
+        //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them // TODO: fix last levels change( dem mem leaks)
+        if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height) || lastLevels != Levels) Init(source, Levels);
 
         Refresh(source);
 
-        Analyze(7);
+        Analyze(Levels);
 
-        Synthesize(7);
+        Synthesize(Levels);
 
-        MakeNonPow2(synthesizeList[synthesizeList.Count-1]);
+        MakeNonPow2(synthesizeList[synthesizeList.Count - 1]);
 
         //Blit that shit
-        Graphics.Blit(source, destination);
+        Graphics.Blit(done, destination);
     }
 
     /// <summary>
@@ -97,6 +104,23 @@ public class PyramidEffects : MonoBehaviour
     /// <param name="source"> Reference to the source texture.</param>
     void Init(RenderTexture source, int levels)
     {
+
+        // These loops to handle changing levels size dnamically works a bit iffy
+        foreach (RenderTexture rT in analyzeList)
+        {
+            if (rT.IsCreated())
+            {
+                rT.Release();
+            }
+        }
+        foreach (RenderTexture rT in synthesizeList)
+        {
+            if (rT.IsCreated())
+            {
+                rT.Release();
+            }
+        }
+
         analyzeList.Clear();
         synthesizeList.Clear();
 
@@ -109,7 +133,7 @@ public class PyramidEffects : MonoBehaviour
             analyzeList[i].Create();
         }
 
-        for(int i = 0; i < levels; i++)
+        for (int i = 0; i < levels; i++)
         {
             synthesizeList.Add(new RenderTexture(analyzeList[levels - 1 - i].width, analyzeList[levels - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
             synthesizeList[i].enableRandomWrite = true;
@@ -123,17 +147,19 @@ public class PyramidEffects : MonoBehaviour
         done.Create();
 
         lastScreenSize = new Vector2(Screen.width, Screen.height);
+        lastLevels = levels;
         isInit = true;
     }
 
     void Refresh(RenderTexture source)
     {
 
-        if(done.IsCreated())
+        if (done.IsCreated())
         {
             done.Release();
             done.Create();
         }
+
         //Check if there is already a texture, if there is then release the old one before making a new one
         foreach (RenderTexture rT in analyzeList)
         {
@@ -152,7 +178,7 @@ public class PyramidEffects : MonoBehaviour
                 rT.Create();
             }
         }
-        
+
         MakePow2(source);
     }
     /// <summary>
@@ -202,7 +228,7 @@ public class PyramidEffects : MonoBehaviour
 
     void Analyze(int levels)
     {
-        for(int i = 0; i < levels - 1; i++)
+        for (int i = 0; i < levels - 1; i++)
         {
             computeTest.SetTexture(computeTest.FindKernel("Analyze"), "source", analyzeList[i]);
             computeTest.SetTexture(computeTest.FindKernel("Analyze"), "dest", analyzeList[i + 1]);
