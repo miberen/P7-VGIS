@@ -219,7 +219,7 @@ public class PyramidEffects : MonoBehaviour
             computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "source", synthesizeList[i]);
             computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "dest", synthesizeList[i + 1]);
 
-            computeTest.Dispatch(computeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(synthesizeList[i + 1].width / 32), (int)Mathf.Ceil(synthesizeList[i + 1].height / 32), 1);
+            computeTest.Dispatch(computeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(synthesizeList[i].width / 32), (int)Mathf.Ceil(synthesizeList[i].height / 32), 1);
         }
     }
 }

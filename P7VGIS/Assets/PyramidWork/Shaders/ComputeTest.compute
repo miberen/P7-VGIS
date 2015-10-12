@@ -9,6 +9,9 @@ float4 ApplyKernel(uint2 id, float3x3 kernel);
 //float4 ApplyKernel1_0(uint2 id);
 //float4 ApplyKernel1_1(uint2 id);
 
+SamplerState _LinearClamp;
+SamplerState _LinearRepeat;
+
 Texture2D<float4> source;
 RWTexture2D<float4> dest;
 
@@ -44,11 +47,8 @@ static float3x3 kernel1_1 =
 void MakePow2 (uint2 id : SV_DispatchThreadID)
 {
 	uint2 offset = uint2(100, 100);
-    uint sW, sH;
-    source.GetDimensions(sW, sH);
-    uint dW, dH;
-    dest.GetDimensions(dW, dH);
-
+	uint sW, sH;
+    source.GetDimensions(sW, sH);	
 
 	// Copies BOTTOM LEFT corner pixel
 	if(id.x < offset.x && id.y < offset.y)
@@ -98,6 +98,16 @@ void Analyze (uint2 id : SV_DispatchThreadID)
 [numthreads(32,32,1)]
 void Synthesize (uint2 id : SV_DispatchThreadID)
 {	
+    uint sW, sH;
+    source.GetDimensions(sW, sH);
+	// Cast to float becasue HLSL is stupid and doesnt figure it out  by itself
+	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+	float2 texelSize = float2((float)1/sW, (float)1/sH);
+
+	//dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
+	//dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
+	//dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
+	//dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
     dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
 	dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
 	dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
