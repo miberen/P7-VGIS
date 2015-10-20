@@ -2,24 +2,32 @@
 #pragma kernel MakeNPow2
 #pragma kernel Analyze
 #pragma kernel Synthesize
+#pragma kernel DOF
+//#pragma kernel Infill
  
 // Declare functions
 float4 ApplyKernel(uint2 id, float3x3 kernel);
-//float4 ApplyKernel0_0(uint2 id);
-//float4 ApplyKernel0_1(uint2 id);
-//float4 ApplyKernel1_0(uint2 id);
-//float4 ApplyKernel1_1(uint2 id);
+float4 ApplyKernel0_0(uint2 id);
+float4 ApplyKernel0_1(uint2 id);
+float4 ApplyKernel1_0(uint2 id);
+float4 ApplyKernel1_1(uint2 id);
 
 // Variables for changing billenear sampling mode
 SamplerState _LinearClamp;
 SamplerState _LinearRepeat;
+SamplerState _PointClamp;
 
 // Uniforms for source and destination textures, Texture2D for read only on source, RWTexture2D for read / write access to destination texture
 Texture2D<float4> source;
 RWTexture2D<float4> dest;
+//Texture2D<float4> infillRead;
+
 
 // Uniform for infill effect
+int isRange;
 float4 infillColor;
+float4 infillLowRange;
+float4 infillHighRange;
 
 // Offset to stop bleeding
 static uint2 offset = uint2(50, 50);
@@ -114,15 +122,45 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 
-	//dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
-	//dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
-	//dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
-	//dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
-    dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
-	dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
-	dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
-	dest[2*id+uint2(1.0, 1.0)] = ApplyKernel(id, kernel1_1);
+	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
+	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
+	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
+	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
+    //dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
+	//dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
+	//dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
+	//dest[2*id+uint2(1.0, 1.0)] = ApplyKernel(id, kernel1_1);
+	//dest[2*id+uint2(0.0, 0.0)] = ApplyKernel0_0(id);
+	//dest[2*id+uint2(0.0, 1.0)] = ApplyKernel0_1(id);
+	//dest[2*id+uint2(1.0, 0.0)] = ApplyKernel1_0(id);
+	//dest[2*id+uint2(1.0, 1.0)] = ApplyKernel1_1(id);
 }
+
+[numthreads(32,32,1)]
+void DOF (uint2 id : SV_DispatchThreadID)
+{
+	//dest[id] = _CameraDepthText[id];
+}
+
+//[numthreads(32,32,1)]
+//void Infill (uint2 id : SV_DispatchThreadID, uint id1D : SV_GroupIndex)
+//{	
+//	uint sW, sH;
+//    source.GetDimensions(sW, sH);
+//	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+//	float2 texelSize = float2((float)1/sW, (float)1/sH);
+//	float4 compare = dest.Load(id1D);
+//	if(isRange == 1)
+//	{
+//		//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
+//		dest[id] = float4(1,0,0,1);
+//	}
+//	else if(compare.x == infillColor.x && compare.y == infillColor.y && compare.z == infillColor.z)
+//	{	
+//		dest[id] = float4(1,0,0,1);
+//		//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
+//	}
+//}
 
 float4 ApplyKernel(uint2 id, float3x3 kernel)
 {
@@ -145,15 +183,11 @@ float4 ApplyKernel0_0(uint2 id)
 {
 	float4 sum = 0;
 
-	sum += source[id + int2(-1.0,-1.0)] * 1;//kernel._m02;
-	sum += source[id + int2(0.0 ,-1.0)] * 3;//kernel._m12;
-	sum += source[id + int2(1.0, -1.0)] * 0;//kernel._m22;
-	sum += source[id + int2(-1.0, 0.0)] * 3;//kernel._m01;
-	sum += source[id + int2( 0.0, 0.0)] * 9;//kernel._m11;
-	sum += source[id + int2( 1.0, 0.0)] * 0;//kernel._m21;
-	sum += source[id + int2(-1.0, 1.0)] * 0;//kernel._m00;
-	sum += source[id + int2( 0.0, 1.0)] * 0;//kernel._m10;
-	sum += source[id + int2( 1.0, 1.0)] * 0;//kernel._m20;
+	sum += source[id + int2(-1.0,-1.0)] * 1;
+	sum += source[id + int2(0.0 ,-1.0)] * 3;
+	sum += source[id + int2(-1.0, 0.0)] * 3;
+	sum += source[id + int2( 0.0, 0.0)] * 9;
+
 
 	return sum/16;
 }

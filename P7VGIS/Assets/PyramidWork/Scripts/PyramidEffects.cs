@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -8,10 +9,19 @@ public class PyramidEffects : MonoBehaviour
     public GameObject plane1;
     public GameObject plane2;
     public GameObject plane3;
-    public ComputeShader computeTest;
-    public FilterMode filtMode;
+    public GameObject plane4;
+
+    public bool infillIsRange;
+
+    public Color infillColor;
+    public Color infillLowRange;
+    public Color infillHighRange;
+
+    public ComputeShader ComputeTest;
+
+    public FilterMode FiltMode;
     [Range(2, 7)]
-    public int Levels;
+    public int Levels = 2;
     #endregion
     #region Privates
 
@@ -23,9 +33,10 @@ public class PyramidEffects : MonoBehaviour
     private int lastLevels;
 
     //Creates the nescessary RenderTextures
-    public List<RenderTexture> analyzeList = new List<RenderTexture>();
-    public List<RenderTexture> synthesizeList = new List<RenderTexture>();
+    private List<RenderTexture> analyzeList = new List<RenderTexture>();
+    private List<RenderTexture> synthesizeList = new List<RenderTexture>();
     private RenderTexture done;
+    private RenderTexture depthNormals;
 
     //The size of the screen last frame;
     private Vector2 lastScreenSize;
@@ -33,7 +44,7 @@ public class PyramidEffects : MonoBehaviour
     //List of power of 2s
     private List<int> pow2s = new List<int>();
     #endregion
-
+ 
     // Use this for initialization
     void Awake()
     {
@@ -44,6 +55,7 @@ public class PyramidEffects : MonoBehaviour
     //Start smart
     void Start()
     {
+        
         //Get the initial screen size
         lastScreenSize = new Vector2(Screen.width, Screen.height);
 
@@ -55,15 +67,15 @@ public class PyramidEffects : MonoBehaviour
         if (Input.GetKeyDown("k"))
         {
             plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
-            plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", synthesizeList[index]);
+            plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", synthesizeList[synthesizeList.Count - 1]);
             plane3.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
             foreach (RenderTexture rT in analyzeList)
             {
-                Debug.Log("analyze:" + rT.height.ToString() + "x" + rT.width.ToString());
+                //Debug.Log("analyze:" + rT.height.ToString() + "x" + rT.width.ToString());
             }
             foreach (RenderTexture rT in synthesizeList)
             {
-                Debug.Log("synthesize" + rT.height.ToString() + "x" + rT.width.ToString());
+                //Debug.Log("synthesize" + rT.height.ToString() + "x" + rT.width.ToString());
             }
         }
 
@@ -89,14 +101,22 @@ public class PyramidEffects : MonoBehaviour
 
         Refresh(source);
 
+        MakePow2(source);
+
         Analyze(Levels);
 
         Synthesize(Levels);
 
+        //Infill();
+
+        DOF();
+
         MakeNonPow2(synthesizeList[synthesizeList.Count - 1]);
 
         //Blit that shit
-        Graphics.Blit(done, destination);
+        //Graphics.Blit(done, destination);
+        //Graphics.Blit(source, destination);
+        Graphics.Blit(source, new Material(Shader.Find("Custom/DepthShader")));
     }
 
     /// <summary>
@@ -105,19 +125,23 @@ public class PyramidEffects : MonoBehaviour
     void Init(RenderTexture source, int levels)
     {
 
-        // These loops to handle changing levels size dnamically works a bit iffy
+        // These loops to handle changing levels size dnamically works a bit iffy ( I.E Doesnt fucking work ATM, memleak)
         foreach (RenderTexture rT in analyzeList)
         {
             if (rT.IsCreated())
             {
+                rT.DiscardContents();
                 rT.Release();
+                Destroy(rT);
             }
         }
         foreach (RenderTexture rT in synthesizeList)
         {
             if (rT.IsCreated())
             {
+                rT.DiscardContents();
                 rT.Release();
+                Destroy(rT);
             }
         }
 
@@ -129,7 +153,7 @@ public class PyramidEffects : MonoBehaviour
         {
             analyzeList.Add(new RenderTexture(pow2s[pow2s.IndexOf(size) - i], pow2s[pow2s.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
             analyzeList[i].enableRandomWrite = true;
-            analyzeList[i].filterMode = filtMode;
+            analyzeList[i].filterMode = FiltMode;
             analyzeList[i].Create();
         }
 
@@ -137,13 +161,13 @@ public class PyramidEffects : MonoBehaviour
         {
             synthesizeList.Add(new RenderTexture(analyzeList[levels - 1 - i].width, analyzeList[levels - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
             synthesizeList[i].enableRandomWrite = true;
-            synthesizeList[i].filterMode = filtMode;
+            synthesizeList[i].filterMode = FiltMode;
             synthesizeList[i].Create();
         }
 
         done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         done.enableRandomWrite = true;
-        done.filterMode = filtMode;
+        done.filterMode = FiltMode;
         done.Create();
 
         lastScreenSize = new Vector2(Screen.width, Screen.height);
@@ -178,8 +202,6 @@ public class PyramidEffects : MonoBehaviour
                 rT.Create();
             }
         }
-
-        MakePow2(source);
     }
     /// <summary>
     /// Generates a list of power of 2s up to 13 (8192).</summary>
@@ -209,31 +231,31 @@ public class PyramidEffects : MonoBehaviour
     void MakePow2(RenderTexture source)
     {
         //Set the shader uniforms
-        computeTest.SetTexture(computeTest.FindKernel("MakePow2"), "source", source);
-        computeTest.SetTexture(computeTest.FindKernel("MakePow2"), "dest", analyzeList[0]);
+        ComputeTest.SetTexture(ComputeTest.FindKernel("MakePow2"), "source", source);
+        ComputeTest.SetTexture(ComputeTest.FindKernel("MakePow2"), "dest", analyzeList[0]);
 
         //Dispatch the compute shader
-        computeTest.Dispatch(computeTest.FindKernel("MakePow2"), (int)Mathf.Ceil(analyzeList[0].width / 32), (int)Mathf.Ceil(analyzeList[0].height / 32), 1);
+        ComputeTest.Dispatch(ComputeTest.FindKernel("MakePow2"), (int)Mathf.Ceil(analyzeList[0].width / 32), (int)Mathf.Ceil(analyzeList[0].height / 32), 1);
     }
 
     void MakeNonPow2(RenderTexture source)
     {
         //Set the shader uniforms
-        computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "source", source);
-        computeTest.SetTexture(computeTest.FindKernel("MakeNPow2"), "dest", done);
+        ComputeTest.SetTexture(ComputeTest.FindKernel("MakeNPow2"), "source", source);
+        ComputeTest.SetTexture(ComputeTest.FindKernel("MakeNPow2"), "dest", done);
 
         //Dispatch the compute shader
-        computeTest.Dispatch(computeTest.FindKernel("MakeNPow2"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
+        ComputeTest.Dispatch(ComputeTest.FindKernel("MakeNPow2"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
     }
 
     void Analyze(int levels)
     {
         for (int i = 0; i < levels - 1; i++)
         {
-            computeTest.SetTexture(computeTest.FindKernel("Analyze"), "source", analyzeList[i]);
-            computeTest.SetTexture(computeTest.FindKernel("Analyze"), "dest", analyzeList[i + 1]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Analyze"), "source", analyzeList[i]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Analyze"), "dest", analyzeList[i + 1]);
 
-            computeTest.Dispatch(computeTest.FindKernel("Analyze"), (int)Mathf.Ceil(analyzeList[i + 1].width / 32), (int)Mathf.Ceil(analyzeList[i + 1].height / 32), 1);
+            ComputeTest.Dispatch(ComputeTest.FindKernel("Analyze"), (int)Mathf.Ceil(analyzeList[i + 1].width / 32), (int)Mathf.Ceil(analyzeList[i + 1].height / 32), 1);
         }
         synthesizeList[0] = analyzeList[levels - 1];
     }
@@ -242,10 +264,44 @@ public class PyramidEffects : MonoBehaviour
     {
         for (int i = 0; i < levels - 1; i++)
         {
-            computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "source", synthesizeList[i]);
-            computeTest.SetTexture(computeTest.FindKernel("Synthesize"), "dest", synthesizeList[i + 1]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Synthesize"), "source", synthesizeList[i]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Synthesize"), "dest", synthesizeList[i + 1]);
 
-            computeTest.Dispatch(computeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(synthesizeList[i].width / 32), (int)Mathf.Ceil(synthesizeList[i].height / 32), 1);
+            ComputeTest.Dispatch(ComputeTest.FindKernel("Synthesize"), (int)Mathf.Ceil(synthesizeList[i].width / 32), (int)Mathf.Ceil(synthesizeList[i].height / 32), 1);
         }
+    }
+
+    void Infill()
+    {
+        if (infillIsRange)
+        {
+            ComputeTest.SetInt("isRange", Convert.ToInt32(infillIsRange));
+            ComputeTest.SetVector("infillLowRange", new Vector4(infillLowRange.r, infillLowRange.g, infillLowRange.b, infillLowRange.a ));
+            ComputeTest.SetVector("infillHighRange", new Vector4( infillHighRange.r, infillHighRange.g, infillHighRange.b, infillHighRange.a));
+
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Infill"), "source", synthesizeList[synthesizeList.Count - Levels/2]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Infill"), "dest", synthesizeList[synthesizeList.Count - 1]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Infill"), "infillRead", synthesizeList[synthesizeList.Count - 1]);
+
+            ComputeTest.Dispatch(ComputeTest.FindKernel("Infill"), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].width / 32), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].height / 32), 1);
+        }
+        else
+        {
+            ComputeTest.SetInt("isRange", Convert.ToInt32(infillIsRange));
+            ComputeTest.SetVector("infillColor", new Vector4( infillColor.r, infillColor.g, infillColor.b, infillColor.a));
+
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Infill"), "source", synthesizeList[synthesizeList.Count - Levels / 2]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Infill"), "dest", synthesizeList[synthesizeList.Count - 1]);
+            ComputeTest.SetTexture(ComputeTest.FindKernel("Infill"), "infillRead", synthesizeList[synthesizeList.Count - 1]);
+
+            ComputeTest.Dispatch(ComputeTest.FindKernel("Infill"), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].width / 32), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].height / 32), 1);
+        }
+    }
+
+    void DOF()
+    {
+        //ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "source", synthesizeList[synthesizeList.Count - Levels / 2]);
+        ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "dest", synthesizeList[synthesizeList.Count - 1]);
+        ComputeTest.Dispatch(ComputeTest.FindKernel("DOF"), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].width / 32), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].height / 32), 1);
     }
 }
