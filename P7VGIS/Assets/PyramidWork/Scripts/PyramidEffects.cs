@@ -96,6 +96,7 @@ public class PyramidEffects : MonoBehaviour
     /// <param name="destination"> The final RenderTexture actually displayed.</param>
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
+        
         //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them // TODO: fix last levels change( dem mem leaks)
         if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height) || lastLevels != Levels) Init(source, Levels);
 
@@ -112,11 +113,11 @@ public class PyramidEffects : MonoBehaviour
         DOF();
 
         MakeNonPow2(synthesizeList[synthesizeList.Count - 1]);
-
+        
         //Blit that shit
         //Graphics.Blit(done, destination);
         //Graphics.Blit(source, destination);
-        Graphics.Blit(source, new Material(Shader.Find("Custom/DepthShader")));
+        Graphics.Blit(source, destination, new Material(Shader.Find("Custom/DepthShader")));
     }
 
     /// <summary>
