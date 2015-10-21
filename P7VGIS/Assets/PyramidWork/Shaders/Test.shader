@@ -5,7 +5,9 @@ Shader "Custom/DepthShader"
     SubShader
     {
         Tags { "RenderType"="Opaque" }
- 
+		ZTest Always Cull Off ZWrite Off
+		Fog { Mode off }
+
         Pass
         {
  
@@ -38,13 +40,13 @@ Shader "Custom/DepthShader"
                 //Grab the depth value from the depth texture
                 //Linear01Depth restricts this value to [0, 1]
 				float depth = Linear01Depth (tex2D(_CameraDepthTexture, i.projPos).r);
-
+				//float depth = tex2D(_CameraDepthTexture, i.projPos).r;
 
 				half4 c;
                 c.r = depth;
-                c.g = depth;
-                c.b = depth;
-                c.a = 1;
+				c.g = depth;
+				c.b = depth;
+				c.a = 1;
  
                 return c;
             }

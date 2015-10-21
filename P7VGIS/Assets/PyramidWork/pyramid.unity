@@ -5398,7 +5398,7 @@ Animator:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1699824735}
-  m_Enabled: 1
+  m_Enabled: 0
   m_Avatar: {fileID: 0}
   m_Controller: {fileID: 9100000, guid: 4234a6d355baec243982ce6ec899180a, type: 2}
   m_CullingMode: 0
@@ -5433,6 +5433,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7cb35ea8385c03245abeac686dfe39b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cam: {fileID: 1699824747}
   plane1: {fileID: 546160817}
   plane2: {fileID: 906384505}
   plane3: {fileID: 1408943848}
@@ -5443,7 +5444,9 @@ MonoBehaviour:
   infillHighRange: {r: .591000021, g: .828000009, b: .796999991, a: 1}
   ComputeTest: {fileID: 7200000, guid: cc7932e466baf704db618a4a710f3689, type: 3}
   FiltMode: 0
-  Levels: 3
+  Levels: 7
+  FocalLenght: 0
+  FocalSize: 0
 --- !u!4 &1712245110
 Transform:
   m_ObjectHideFlags: 0

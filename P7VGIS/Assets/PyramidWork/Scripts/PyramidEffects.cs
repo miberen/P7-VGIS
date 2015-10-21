@@ -6,6 +6,7 @@ using System.Collections.Generic;
 public class PyramidEffects : MonoBehaviour
 {
     #region Publics
+    public Camera cam;
     public GameObject plane1;
     public GameObject plane2;
     public GameObject plane3;
@@ -22,6 +23,11 @@ public class PyramidEffects : MonoBehaviour
     public FilterMode FiltMode;
     [Range(2, 7)]
     public int Levels = 2;
+    [Range(1, 100)]
+    public float FocalLenght = 1;
+    [Range(1, 100)]
+    public float FocalSize = 1;
+
     #endregion
     #region Privates
 
@@ -36,7 +42,7 @@ public class PyramidEffects : MonoBehaviour
     private List<RenderTexture> analyzeList = new List<RenderTexture>();
     private List<RenderTexture> synthesizeList = new List<RenderTexture>();
     private RenderTexture done;
-    private RenderTexture depthNormals;
+    private RenderTexture depth;
 
     //The size of the screen last frame;
     private Vector2 lastScreenSize;
@@ -55,7 +61,8 @@ public class PyramidEffects : MonoBehaviour
     //Start smart
     void Start()
     {
-        
+        depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        depth.Create();
         //Get the initial screen size
         lastScreenSize = new Vector2(Screen.width, Screen.height);
 
@@ -69,6 +76,7 @@ public class PyramidEffects : MonoBehaviour
             plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
             plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", synthesizeList[synthesizeList.Count - 1]);
             plane3.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
+            plane4.GetComponent<Renderer>().material.SetTexture("_MainTex", depth);
             foreach (RenderTexture rT in analyzeList)
             {
                 //Debug.Log("analyze:" + rT.height.ToString() + "x" + rT.width.ToString());
@@ -82,11 +90,12 @@ public class PyramidEffects : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             index += 1;
-            if (index >= analyzeList.Count - 1)
+            if (index >= synthesizeList.Count)
                 index = 0;
             plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
             plane2.GetComponent<Renderer>().material.SetTexture("_MainTex", synthesizeList[index]);
             plane3.GetComponent<Renderer>().material.SetTexture("_MainTex", done);
+            plane4.GetComponent<Renderer>().material.SetTexture("_MainTex", depth);
         }
     }
 
@@ -110,14 +119,15 @@ public class PyramidEffects : MonoBehaviour
 
         //Infill();
 
+        Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         DOF();
 
         MakeNonPow2(synthesizeList[synthesizeList.Count - 1]);
-        
+
         //Blit that shit
         //Graphics.Blit(done, destination);
-        //Graphics.Blit(source, destination);
-        Graphics.Blit(source, destination, new Material(Shader.Find("Custom/DepthShader")));
+
+        Graphics.Blit(source, destination);
     }
 
     /// <summary>
@@ -301,8 +311,22 @@ public class PyramidEffects : MonoBehaviour
 
     void DOF()
     {
-        //ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "source", synthesizeList[synthesizeList.Count - Levels / 2]);
+        ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "depth", depth);
+        for (int i = 0; i < synthesizeList.Count - 2; i++) // -2 because final texture is output
+        {
+            ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "DOF" + i , synthesizeList[i]);
+        }
+        ComputeTest.SetFloat("focalLenght", Remap(FocalLenght, cam.nearClipPlane, cam.farClipPlane, 0, 1));
+        ComputeTest.SetFloat("focalSize", Remap(FocalSize, cam.nearClipPlane, cam.farClipPlane, 0, 1));
+
+        Debug.Log(Remap(FocalLenght, cam.nearClipPlane, cam.farClipPlane, 0, 1));
+
         ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "dest", synthesizeList[synthesizeList.Count - 1]);
         ComputeTest.Dispatch(ComputeTest.FindKernel("DOF"), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].width / 32), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].height / 32), 1);
+    }
+
+    public static float Remap(float value, float from1, float to1, float from2, float to2)
+    {
+        return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
     }
 }

@@ -19,11 +19,25 @@ SamplerState _PointClamp;
 
 // Uniforms for source and destination textures, Texture2D for read only on source, RWTexture2D for read / write access to destination texture
 Texture2D<float4> source;
+Texture2D<float4> depth;
 RWTexture2D<float4> dest;
 //Texture2D<float4> infillRead;
 
+// Uniforms for DOF ( cuz cancer, cant pass arrays of textures from unity )
+float focalLenght;
+float focalSize;
+Texture2D<float4> DOF0;
+Texture2D<float4> DOF1;
+Texture2D<float4> DOF2;
+Texture2D<float4> DOF3;
+Texture2D<float4> DOF4;
+Texture2D<float4> DOF5;
+Texture2D<float4> DOF6;
+Texture2D<float4> DOF7;
+Texture2D<float4> DOF8;
+Texture2D<float4> DOF9;
 
-// Uniform for infill effect
+// Uniforms for infill effect
 int isRange;
 float4 infillColor;
 float4 infillLowRange;
@@ -139,7 +153,8 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 [numthreads(32,32,1)]
 void DOF (uint2 id : SV_DispatchThreadID)
 {
-	//dest[id] = _CameraDepthText[id];
+	float fL = depth[id];
+	dest[id + offset] = float4(0 ,1.0 * depth[id].r ,0,1);
 }
 
 //[numthreads(32,32,1)]
