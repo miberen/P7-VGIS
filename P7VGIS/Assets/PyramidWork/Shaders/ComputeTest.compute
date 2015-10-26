@@ -24,8 +24,10 @@ RWTexture2D<float4> dest;
 //Texture2D<float4> infillRead;
 
 // Uniforms for DOF ( cuz cancer, cant pass arrays of textures from unity )
-float focalLenght;
+float focalLength;
 float focalSize;
+float aperture;
+float farClipPlane;
 Texture2D<float4> DOF0;
 Texture2D<float4> DOF1;
 Texture2D<float4> DOF2;
@@ -136,14 +138,14 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 
-	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
-	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
-	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
-	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
-    //dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
-	//dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
-	//dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
-	//dest[2*id+uint2(1.0, 1.0)] = ApplyKernel(id, kernel1_1);
+	//dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
+	//dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
+	//dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
+	//dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
+    dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
+	dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
+	dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
+	dest[2*id+uint2(1.0, 1.0)] = ApplyKernel(id, kernel1_1);
 	//dest[2*id+uint2(0.0, 0.0)] = ApplyKernel0_0(id);
 	//dest[2*id+uint2(0.0, 1.0)] = ApplyKernel0_1(id);
 	//dest[2*id+uint2(1.0, 0.0)] = ApplyKernel1_0(id);
@@ -153,8 +155,32 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 [numthreads(32,32,1)]
 void DOF (uint2 id : SV_DispatchThreadID)
 {
-	float fL = depth[id];
-	dest[id + offset] = float4(0 ,1.0 * depth[id].r ,0,1);
+	uint sW, sH;
+    source.GetDimensions(sW, sH);
+	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+
+	if(!(depth[id].r * farClipPlane <= focalLength + focalSize && depth[id].r * farClipPlane >= focalLength - focalSize))
+	{
+		dest[id + offset] = DOF2.SampleLevel(_PointClamp, uv, 0);
+	}
+
+	int d = 0;
+
+	switch (d){
+		case 0:
+		 // do stuff
+		 break;
+		 case 1:
+		 //do stuff
+		 break;
+		 case 2:
+		 //do stuff
+		 break;
+		 default:
+		 //do stuff
+		 break;
+		 }
+		
 }
 
 //[numthreads(32,32,1)]

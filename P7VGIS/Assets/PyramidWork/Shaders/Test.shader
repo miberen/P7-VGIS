@@ -44,9 +44,9 @@ Shader "Custom/DepthShader"
 
 				half4 c;
                 c.r = depth;
-				c.g = depth;
-				c.b = depth;
-				c.a = 1;
+				//c.g = depth;
+				//c.b = depth;
+				//c.a = 1;
  
                 return c;
             }

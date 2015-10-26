@@ -11,6 +11,7 @@ public class PyramidEffects : MonoBehaviour
     public GameObject plane2;
     public GameObject plane3;
     public GameObject plane4;
+    public GameObject focusTarget;
 
     public bool infillIsRange;
 
@@ -24,9 +25,11 @@ public class PyramidEffects : MonoBehaviour
     [Range(2, 7)]
     public int Levels = 2;
     [Range(1, 100)]
-    public float FocalLenght = 1;
-    [Range(1, 100)]
+    public float focalLength = 1;
+    [Range(0.1f, 10)]
     public float FocalSize = 1;
+    [Range(0.1f, 10)]
+    public float aperture = 1;
 
     #endregion
     #region Privates
@@ -61,7 +64,7 @@ public class PyramidEffects : MonoBehaviour
     //Start smart
     void Start()
     {
-        depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
         depth.Create();
         //Get the initial screen size
         lastScreenSize = new Vector2(Screen.width, Screen.height);
@@ -71,6 +74,7 @@ public class PyramidEffects : MonoBehaviour
 
     void Update()
     {
+        //focalLength = Vector3.Distance(ball.transform.position, cam.transform.position);
         if (Input.GetKeyDown("k"))
         {
             plane1.GetComponent<Renderer>().material.SetTexture("_MainTex", analyzeList[index]);
@@ -104,8 +108,7 @@ public class PyramidEffects : MonoBehaviour
     /// <param name="source"> The RenderTexture about to be displayed on the screen.</param>
     /// <param name="destination"> The final RenderTexture actually displayed.</param>
     void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        
+    {       
         //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them // TODO: fix last levels change( dem mem leaks)
         if (!isInit || lastScreenSize != new Vector2(Screen.width, Screen.height) || lastLevels != Levels) Init(source, Levels);
 
@@ -316,10 +319,10 @@ public class PyramidEffects : MonoBehaviour
         {
             ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "DOF" + i , synthesizeList[i]);
         }
-        ComputeTest.SetFloat("focalLenght", Remap(FocalLenght, cam.nearClipPlane, cam.farClipPlane, 0, 1));
-        ComputeTest.SetFloat("focalSize", Remap(FocalSize, cam.nearClipPlane, cam.farClipPlane, 0, 1));
-
-        Debug.Log(Remap(FocalLenght, cam.nearClipPlane, cam.farClipPlane, 0, 1));
+        ComputeTest.SetFloat("focalLength", focalLength);
+        ComputeTest.SetFloat("focalSize", FocalSize);
+        ComputeTest.SetFloat("aperture", aperture);
+        ComputeTest.SetFloat("farClipPlane", cam.farClipPlane);
 
         ComputeTest.SetTexture(ComputeTest.FindKernel("DOF"), "dest", synthesizeList[synthesizeList.Count - 1]);
         ComputeTest.Dispatch(ComputeTest.FindKernel("DOF"), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].width / 32), (int)Mathf.Ceil(synthesizeList[synthesizeList.Count - 1].height / 32), 1);
