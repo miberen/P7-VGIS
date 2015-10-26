@@ -48,6 +48,12 @@ float4 infillHighRange;
 // Offset to stop bleeding
 static uint2 offset = uint2(50, 50);
 
+
+float Remap(float value, float from1, float to1, float from2, float to2)
+{
+	return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
+}
+
 // Kernels for synthesize function
 static float3x3 kernel0_0 =
 {	
@@ -156,12 +162,14 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 void DOF (uint2 id : SV_DispatchThreadID)
 {
 	uint sW, sH;
-    source.GetDimensions(sW, sH);
-	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+    dest.GetDimensions(sW, sH);
+	uint dW, dH;
+    DOF0.GetDimensions(dW, dH);
+	float2 uv = float2((float)Remap(id.x + offset.x, 0, sW, 0, dW) / dW, (float)Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
 
 	if(!(depth[id].r * farClipPlane <= focalLength + focalSize && depth[id].r * farClipPlane >= focalLength - focalSize))
 	{
-		dest[id + offset] = DOF2.SampleLevel(_PointClamp, uv, 0);
+		dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 	}
 
 	int d = 0;
