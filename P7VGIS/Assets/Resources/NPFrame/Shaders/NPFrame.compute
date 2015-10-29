@@ -1,5 +1,4 @@
-﻿#pragma enable_d3d11_debug_symbols
-#pragma kernel MakePow2
+﻿#pragma kernel MakePow2
 #pragma kernel MakeNPow2
 #pragma kernel Analyze
 #pragma kernel Synthesize

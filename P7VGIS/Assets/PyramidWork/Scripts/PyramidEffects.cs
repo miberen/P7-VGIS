@@ -126,7 +126,7 @@ public class PyramidEffects : MonoBehaviour
 
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         DOF(donePow2);
-        // TODO: Transfer something to donePow2
+        
         MakeNonPow2(donePow2);
         
         //Blit that shit
