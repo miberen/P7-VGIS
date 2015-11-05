@@ -3,7 +3,53 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-public class NpFrame : MonoBehaviour {
+public class NpFrame {
+
+    /// <summary>
+    /// Synthesis container of a list of RenderTextures and its source level.</summary>
+    public class Synthesis
+    {
+        private readonly int _analyzedFrom;
+        private readonly List<RenderTexture> _synths;
+
+        /// <summary>
+        /// Instantiates a Synthesis container of a list of RenderTextures and its source level.</summary>
+        /// <param name="list"> List of synthesized RenderTextures.</param>
+        /// <param name="analyzedFrom"> The zero-based index of the source analysis level.</param>
+        internal Synthesis(List<RenderTexture> list, int analyzedFrom)
+        {
+            _analyzedFrom = analyzedFrom;
+            _synths = list;
+        }
+        /// <summary>
+        /// Returns the zero-based index of the Analysis level this Synthesis is generated from.</summary>
+        public int GetSourceLevel
+        {
+            get { return _analyzedFrom; }
+        }
+
+        /// <summary>
+        /// Returns the entire list of RenderTextures contained in the Synthesi pyramid.</summary>
+        public List<RenderTexture> GetTexList
+        {
+            get { return _synths; }
+        }
+
+        /// <summary>
+        /// Instantiates a Synthesis container of a list of RenderTextures and its source level.</summary>
+        /// <param name="index"> The zero-based index of the texture to return</param>
+        public RenderTexture GetTex(int index)
+        {
+            return _synths[index];
+        }
+
+        /// <summary>
+        /// Returns the non-zero based count of textures in the Synthesis pyramid.</summary>
+        public int Count
+        {
+            get { return _synths.Count; }
+        }
+    }
 
     #region Public Properties
 
@@ -12,24 +58,29 @@ public class NpFrame : MonoBehaviour {
         get { return _masterList; }
     }
 
+    public List<RenderTexture> AnalyzeList
+    {
+        get { return _analyzeList; }
+    }
+
     #endregion
 
 
     #region Private Properties
 
+
     //Shader containing pyramid functions
-    private ComputeShader cSMain;
+    private ComputeShader _cSMain;
 
     //The master of lists
     private static List<NpFrame> _masterList = new List<NpFrame>();
 
     //Creates the nescessary RenderTextures
     private List<RenderTexture> _analyzeList = new List<RenderTexture>();
-    private List<List<RenderTexture>> _synthesizeLists = new List<List<RenderTexture>>();
+    private List<Synthesis> _synthesizeList = new List<Synthesis>();
     private RenderTexture _source;
     private RenderTexture _done;
     private RenderTexture _donePow2;
-    private RenderTexture _depth;
 
     //Bool to see if textures are initialized
     private bool _isInit = false;
@@ -79,7 +130,7 @@ public class NpFrame : MonoBehaviour {
     #endregion
 
 
-    #region Public Functions
+    #region Public Methods
 
     /// <summary>
     /// Sets the source texture for the pyramid.</summary>
@@ -88,13 +139,23 @@ public class NpFrame : MonoBehaviour {
     {
         _source = src;
         _isInit = false;
+        InitAnalyze(_source, _levels);
     }
     /// <summary>
     /// Generates a Synthesis from the specified power of 2 resolution.</summary>
     /// <param name="fromResolution"> The analysis resolution to synthesize from.</param>
-    public List<RenderTexture> GetSynthesis(Vector2 fromResolution)
-    {
-        return null;
+    public Synthesis GetSynthesis(Vector2 fromResolution)
+    {      
+        int level = LvlFromRes(fromResolution);
+        List<RenderTexture> tempSynth = new List<RenderTexture>();
+        for (int i = 0; i < level; i++)
+        {
+            tempSynth.Add(new RenderTexture(_analyzeList[level].width, _analyzeList[level].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+            tempSynth[i].enableRandomWrite = true;
+            tempSynth[i].Create();
+        }
+        
+        return Synthesize(level, tempSynth, level);
     }
 
 
@@ -102,10 +163,10 @@ public class NpFrame : MonoBehaviour {
 
     private void BasicInits()
     {
+        _cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
         _masterList.Add(this);
-        GenPow2();
-        
-        cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
+
+        GenPow2();      
     }
 
     private void InitAnalyze(RenderTexture src, int levels)
@@ -116,7 +177,6 @@ public class NpFrame : MonoBehaviour {
             if (rT.IsCreated())
             {
                 rT.Release();
-                Destroy(rT);
             }
         }      
 
@@ -150,14 +210,12 @@ public class NpFrame : MonoBehaviour {
     // Use this for initialization
     void Start ()
     {
-        cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
-        Debug.Log(cSMain.name);
 
-        InitAnalyze(_source, _levels);
+
 	}
 	
 	// Update is called once per frame
-	void Update ()
+	public void Update ()
     {
         //Check if the temp texture isn't initialized or the screen size has changed requiring a new size texture, if it has then reinit them // TODO: fix last levels change( dem mem leaks)
         if (!_isInit || _lastScreenSize != new Vector2(Screen.width, Screen.height))
@@ -202,30 +260,67 @@ public class NpFrame : MonoBehaviour {
         else
             return SystemInfo.supportsComputeShaders;
     }
+    /// <summary>
+    /// Calculates the level that corresponds to a certain resolution.
+    /// </summary>
+    /// <param name="res"> Resolution to calculate level from</param>
+    /// <returns> Zero-based index of Analyzation Pyramid of that resolution. </returns>
+    private int LvlFromRes(Vector2 res)
+    {
+        int ret = -1;
+        if (_analyzeList.Count != 0)
+        {
+            foreach (RenderTexture rT in _analyzeList)
+            {
+                if (res.x == rT.width && res.y == rT.height) ret = _analyzeList.IndexOf(rT);
+            }
+            if (ret == -1)
+            {
+                Debug.Log("Analyze list does not contain specified resolution." );
+                return ret;
+            }
+        }
+        else
+        {
+            Debug.Log("Analyze list is empty, cannot calculate level from given resolution.");
+            return ret;
+        }
+        return ret;
+    }
+
     #endregion
-    
+
     #region Compute Shader Calls
 
     void Analyze(int levels)
     {
         for (int i = 0; i < levels - 1; i++)
         {
-            cSMain.SetTexture(cSMain.FindKernel("Analyze"), "source", _analyzeList[i]);
-            cSMain.SetTexture(cSMain.FindKernel("Analyze"), "dest", _analyzeList[i + 1]);
+            _cSMain.SetTexture(_cSMain.FindKernel("Analyze"), "source", _analyzeList[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel("Analyze"), "dest", _analyzeList[i + 1]);
 
-            cSMain.Dispatch(cSMain.FindKernel("Analyze"), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
+            _cSMain.Dispatch(_cSMain.FindKernel("Analyze"), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
         }
     }
 
-    void Synthesize(RenderTexture src, int levels)
+    /// <summary>
+    /// Generates a Synthesis pyramid based on a source texture,
+    /// </summary>
+    /// <param name="src"></param>
+    /// <param name="dest"></param>
+    /// <param name="levels"></param>
+    /// <returns></returns>
+    Synthesis Synthesize(int fromLevel, List<RenderTexture> dest, int levels)
     {
-        for (int i = 0; i < levels - 1; i++)
+        dest.Insert(0, _analyzeList[levels]); 
+        for (int i = 0; i < levels; i++)
         {
-            cSMain.SetTexture(cSMain.FindKernel("Synthesize"), "source", synthesizeList[i]);
-            cSMain.SetTexture(cSMain.FindKernel("Synthesize"), "dest", synthesizeList[i + 1]);
-
-            cSMain.Dispatch(cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(synthesizeList[i].width / 32), (int)Mathf.Ceil(synthesizeList[i].height / 32), 1);
+            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", dest[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", dest[i + 1]);
+            _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(dest[i].width / 32), (int)Mathf.Ceil(dest[i].height / 32), 1);
         }
+        dest.RemoveAt(0);
+        return new Synthesis(dest, levels);
     }
 
     #endregion

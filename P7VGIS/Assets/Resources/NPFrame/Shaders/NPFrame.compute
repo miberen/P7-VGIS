@@ -144,10 +144,10 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 
-	//dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_PointClamp, uv, 0);
-	//dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_PointClamp, float2(uv.x + texelSize.x, uv.y), 0);
-	//dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_PointClamp, float2(uv.x, uv.y + texelSize.y), 0);
-	//dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_PointClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
+	//dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
+	//dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
+	//dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
+	//dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
     dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
 	dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
 	dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
