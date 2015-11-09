@@ -257,8 +257,8 @@ public class NpFrame {
             Debug.Log("Error: Compute Shaders not supported on this system. Requires Shader Model 50(DX11), Shader Model: " + SystemInfo.graphicsShaderLevel + " detected");
             return !SystemInfo.supportsComputeShaders;
         }
-        else
-            return SystemInfo.supportsComputeShaders;
+        
+        return SystemInfo.supportsComputeShaders;
     }
     /// <summary>
     /// Calculates the level that corresponds to a certain resolution.

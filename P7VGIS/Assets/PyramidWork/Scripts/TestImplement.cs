@@ -9,11 +9,11 @@ public class TestImplement : MonoBehaviour
     public List<RenderTexture> synth; 
 
 
-    private NpFrame frame;
+    private NPFrame2 frame;
 	// Use this for initialization
     void Awake()
     {
-        frame = new NpFrame(5);
+        frame = new NPFrame2("main");
     }
 
     void Start()
@@ -23,11 +23,7 @@ public class TestImplement : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        frame.SetSrcTex(ref source);
-        frame.Update();      
-        NpFrame.Synthesis derp = frame.GetSynthesis(new Vector2(512, 512));
-        synth = derp.GetTexList;
-        anal = frame.AnalyzeList;
+        
         //Graphics.Blit(derp.GetTex(derp.Count-1), destination);
         Graphics.Blit(source, destination);
     }
