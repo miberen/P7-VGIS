@@ -10,25 +10,31 @@ public class NPFrame2{
         private List<RenderTexture> _synths;
         private int _analyzedFrom;
 
-        internal Synthesis(List<RenderTexture> synths, int analyzedFrom)
+        internal Synthesis(int analyzedFrom)
         {
             _analyzedFrom = analyzedFrom;
-            _synths = synths;
+            _synths = new List<RenderTexture>();
         }
 
 
-        public int GetSourceLevel
+
+        public int SourceLevel
         {
             get { return _analyzedFrom; }
         }
+
+        public List<RenderTexture> Pyramid 
+        {
+            get { return _synths; }
+        }
     };
 
-    private Dictionary<string, NPFrame2> _masterDic;
-    private Dictionary<string, Synthesis> __synthDic;
-    private List<RenderTexture> _analyzeList;
+    private Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
+    private Dictionary<string, Synthesis> _synthDic = new Dictionary<string,Synthesis>();
+    private List<RenderTexture> _analyzeList = new List<RenderTexture>();
 
     private int _levels;
-    private List<int> _pow2S;
+    private List<int> _pow2S = new List<int>();
     private bool _isInit;
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
@@ -36,6 +42,7 @@ public class NPFrame2{
     private RenderTexture _done;
     private RenderTexture _donePow2;
 
+    [Obsolete("Use other constructors for now")]
     public NPFrame2(string name)
     {
         BasicInit(name);
@@ -43,6 +50,7 @@ public class NPFrame2{
 
     public NPFrame2(string name, int analyzeLevels)
     {
+        _levels = analyzeLevels;
         BasicInit(name);
     }
 
@@ -51,13 +59,42 @@ public class NPFrame2{
         BasicInit(name);
     }
 
+    public List<RenderTexture> AnalyzeList
+    {
+        get { return _analyzeList; }
+    }
+
+    public Synthesis GetSynthesis(string key)
+    {
+        return _synthDic[key];
+    }
+
     public void Analyze(ref RenderTexture source)
     {
         if (!_isInit || _lastScreenSize != new Vector2(Screen.width, Screen.height)) InitAnalyze(ref source);
+
+        MakePow2Call(ref source, ref _analyzeList);
+
+        AnalyzeCall();
     }
 
-    public void GenerateSynthesis(int sourceLevel)
+    public void GenerateSynthesis(int sourceLevel, string name)
     {
+        if (!_synthDic.ContainsKey(name))
+        {
+            _synthDic.Add(name, new Synthesis(sourceLevel));
+
+            for (int i = 0; i <= _analyzeList.Count - sourceLevel; i++)
+            {
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[_levels - 1 - i].width, _analyzeList[_levels - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid[i].enableRandomWrite = true;
+                _synthDic[name].Pyramid[i].Create();
+            }
+        }
+        else
+        {
+            SynthesizeCall(_synthDic[name]);
+        }
         
     }
 
@@ -66,7 +103,8 @@ public class NPFrame2{
         if (CheckCompatibility())
         {
             _masterDic.Add(name, this);
-            _lastScreenSize = new Vector2(Screen.width, Screen.height);
+            _cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
+            GenPow2S();
         }
     }
 
@@ -76,7 +114,6 @@ public class NPFrame2{
         {
             if (rT.IsCreated())
             {
-                //rT.DiscardContents();
                 rT.Release();
             }            
         }
@@ -106,7 +143,7 @@ public class NPFrame2{
 
     private void AnalyzeCall()
     {
-        for (int i = 0; i < _levels; i++)
+        for (int i = 0; i < _levels - 1; i++)
         {
             _cSMain.SetTexture(_cSMain.FindKernel("Analyze"), "source", _analyzeList[i]);
             _cSMain.SetTexture(_cSMain.FindKernel("Analyze"), "dest", _analyzeList[i + 1]);
@@ -115,9 +152,17 @@ public class NPFrame2{
         }
     }
 
-    private void SynthesizeCall()
+    private void SynthesizeCall(Synthesis synth, int levels = 0)
     {
-        
+        if (levels == 0) levels = _levels;
+
+        for (int i = 0; i < levels - 1; i++)
+        {
+            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", synth.Pyramid[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i + 1]);
+
+            _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
+        }
     }
 
     private int NextPow2(Vector2 resolution)
@@ -184,14 +229,15 @@ public class NPFrame2{
         destination = null;
     }
 
-    private void MakePow2Call(ref RenderTexture source, ref RenderTexture destination)
+    private void MakePow2Call(ref RenderTexture source, ref List<RenderTexture> destination)
     {
         //Set the shader uniforms
         _cSMain.SetTexture(_cSMain.FindKernel("MakePow2"), "source", source);
-        _cSMain.SetTexture(_cSMain.FindKernel("MakePow2"), "dest", destination);
+        _cSMain.SetTexture(_cSMain.FindKernel("MakePow2"), "dest", destination[0]);
 
-        //Dispatch the compute shader
-        _cSMain.Dispatch(_cSMain.FindKernel("MakePow2"), (int)Mathf.Ceil(destination.width / 32), (int)Mathf.Ceil(destination.height / 32), 1);
+        //Dispatch the compute shader 
+        // hack the index
+        _cSMain.Dispatch(_cSMain.FindKernel("MakePow2"), (int)Mathf.Ceil(destination[0].width / 32), (int)Mathf.Ceil(destination[0].height / 32), 1);
     }
 
     private void MakeNonPow2Call(ref RenderTexture source, ref RenderTexture destination)

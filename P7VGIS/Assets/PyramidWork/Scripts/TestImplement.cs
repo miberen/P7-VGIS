@@ -13,7 +13,7 @@ public class TestImplement : MonoBehaviour
 	// Use this for initialization
     void Awake()
     {
-        frame = new NPFrame2("main");
+        frame = new NPFrame2("main", 4);
     }
 
     void Start()
@@ -23,7 +23,11 @@ public class TestImplement : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        
+        frame.Analyze(ref source);
+        frame.GenerateSynthesis(2, "main");
+
+        anal = frame.AnalyzeList;
+        synth = frame.GetSynthesis("main").Pyramid;
         //Graphics.Blit(derp.GetTex(derp.Count-1), destination);
         Graphics.Blit(source, destination);
     }
