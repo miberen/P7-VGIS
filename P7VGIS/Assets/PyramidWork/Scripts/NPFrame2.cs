@@ -84,16 +84,16 @@ public class NPFrame2{
         {
             _synthDic.Add(name, new Synthesis(sourceLevel));
 
-            for (int i = 0; i <= _analyzeList.Count - sourceLevel; i++)
+            for (int i = 0; i < _analyzeList.Count - sourceLevel; i++)
             {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[_levels - 1 - i].width, _analyzeList[_levels - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
                 _synthDic[name].Pyramid[i].enableRandomWrite = true;
                 _synthDic[name].Pyramid[i].Create();
             }
         }
         else
         {
-            SynthesizeCall(_synthDic[name]);
+            SynthesizeCall(_synthDic[name], _analyzeList.Count - sourceLevel);
         }
         
     }
@@ -158,6 +158,15 @@ public class NPFrame2{
 
         for (int i = 0; i < levels - 1; i++)
         {
+            if (i == 0)
+            {
+                Debug.Log(_analyzeList[synth.SourceLevel].width + " analyze");
+                Debug.Log(synth.Pyramid[i].width + " synth");
+                _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
+                _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i]);
+
+                _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+            }
             _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", synth.Pyramid[i]);
             _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i + 1]);
 
