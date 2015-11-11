@@ -5,20 +5,31 @@ using System.Collections.Generic;
 
 public class TestImplement : MonoBehaviour
 {
+    public List<RenderTexture> anal; 
+    public List<RenderTexture> synth; 
 
 
-    private NpFrame frame;
+    private NPFrame2 frame;
 	// Use this for initialization
-
-    void Start ()
+    void Awake()
     {
-        frame = new NpFrame(5);
-	}
+        frame = new NPFrame2("main", 4);
+    }
+
+    void Start()
+    {
+        
+    }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        frame.SetSrcTex(ref source);
-        List<RenderTexture> derp = frame.GetSynthesis(new Vector2(32, 32));
+        frame.Analyze(ref source);
+        frame.GenerateSynthesis(2, "main");
+
+        anal = frame.AnalyzeList;
+        synth = frame.GetSynthesis("main").Pyramid;
+        //Graphics.Blit(derp.GetTex(derp.Count-1), destination);
+        Graphics.Blit(source, destination);
     }
 	// Update is called once per frame
 	void Update () {
