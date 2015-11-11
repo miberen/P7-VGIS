@@ -69,6 +69,11 @@ public class NPFrame2{
         return _synthDic[key];
     }
 
+    public ComputeShader GetShader
+    {
+        get { return _cSMain; }
+    }
+
     public void Analyze(ref RenderTexture source)
     {
         if (!_isInit || _lastScreenSize != new Vector2(Screen.width, Screen.height)) InitAnalyze(ref source);
@@ -160,8 +165,8 @@ public class NPFrame2{
         {
             if (i == 0)
             {
-                Debug.Log(_analyzeList[synth.SourceLevel].width + " analyze");
-                Debug.Log(synth.Pyramid[i].width + " synth");
+                //Debug.Log(_analyzeList[synth.SourceLevel].width + " analyze");
+                //Debug.Log(synth.Pyramid[i].width + " synth");
                 _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
                 _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i]);
 
