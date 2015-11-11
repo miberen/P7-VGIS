@@ -98,6 +98,26 @@ public class NPFrame2{
         
     }
 
+    public void GenerateSynthesis(int sourceLevel, int targetLevel, string name)
+    {
+        if (!_synthDic.ContainsKey(name))
+        {
+            _synthDic.Add(name, new Synthesis(sourceLevel));
+
+            for (int i = 0; i < _analyzeList.Count - sourceLevel; i++)
+            {
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid[i].enableRandomWrite = true;
+                _synthDic[name].Pyramid[i].Create();
+            }
+        }
+        else
+        {
+            SynthesizeCall(_synthDic[name], _analyzeList.Count - sourceLevel);
+        }
+
+    }
+
     private void BasicInit(string name)
     {
         if (CheckCompatibility())
