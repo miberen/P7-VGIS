@@ -39,7 +39,7 @@ float4 infillLowRange;
 float4 infillHighRange;
 
 // Offset to stop bleeding
-static uint2 offset = uint2(50, 50);
+static uint2 offset = uint2(64, 64);
 
 
 float Remap(float value, float from1, float to1, float from2, float to2)

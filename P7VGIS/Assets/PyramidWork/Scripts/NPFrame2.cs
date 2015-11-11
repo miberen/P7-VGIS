@@ -9,14 +9,14 @@ public class NPFrame2{
     {
         private List<RenderTexture> _synths;
         private int _analyzedFrom;
+        private int _levels;
 
         internal Synthesis(int analyzedFrom)
         {
             _analyzedFrom = analyzedFrom;
             _synths = new List<RenderTexture>();
+            _levels = _synths.Count;
         }
-
-
 
         public int SourceLevel
         {
@@ -74,6 +74,17 @@ public class NPFrame2{
         get { return _cSMain; }
     }
 
+    public RenderTexture MakeNPOT(RenderTexture source)
+    {
+        if (_done != null)
+        {
+            MakeNonPow2Call(ref source, ref _done);
+            return _done;
+        }
+        Debug.Log("You dun goofed: _done texture not initialized");
+        return null;
+    }
+
     public void Analyze(ref RenderTexture source)
     {
         if (!_isInit || _lastScreenSize != new Vector2(Screen.width, Screen.height)) InitAnalyze(ref source);
@@ -83,13 +94,18 @@ public class NPFrame2{
         AnalyzeCall();
     }
 
+    /// <summary>
+    /// Generates a synthesis from a specified non-zero based source level of the analyzation pyramid.
+    /// </summary>
+    /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
+    /// <param name="name"> Name of the synthesis, used to access it later.</param>
     public void GenerateSynthesis(int sourceLevel, string name)
     {
         if (!_synthDic.ContainsKey(name))
         {
             _synthDic.Add(name, new Synthesis(sourceLevel));
 
-            for (int i = 0; i < _analyzeList.Count - sourceLevel; i++)
+            for (int i = 0; i < sourceLevel; i++)
             {
                 _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
                 _synthDic[name].Pyramid[i].enableRandomWrite = true;
@@ -98,10 +114,16 @@ public class NPFrame2{
         }
         else
         {
-            SynthesizeCall(_synthDic[name], _analyzeList.Count - sourceLevel);
+            SynthesizeCall(_synthDic[name], sourceLevel);
         }
         
     }
+    /// <summary>
+    /// Generates a synthesis from a specified non-zero based source level of the analyzation pyramid.
+    /// </summary>
+    /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
+    /// <param name="targetLevel"> How many levels of synthesis to generate. </param>
+    /// <param name="name"> Name of the synthesis, used to access it later.</param>
 
     public void GenerateSynthesis(int sourceLevel, int targetLevel, string name)
     {
@@ -118,7 +140,7 @@ public class NPFrame2{
         }
         else
         {
-            SynthesizeCall(_synthDic[name], _analyzeList.Count - sourceLevel);
+            SynthesizeCall(_synthDic[name], sourceLevel);
         }
 
     }
@@ -177,7 +199,7 @@ public class NPFrame2{
         }
     }
 
-    private void SynthesizeCall(Synthesis synth, int levels = 0)
+    private void SynthesizeCall(Synthesis synth,int levels = 0)
     {
         if (levels == 0) levels = _levels;
 
@@ -185,8 +207,8 @@ public class NPFrame2{
         {
             if (i == 0)
             {
-                //Debug.Log(_analyzeList[synth.SourceLevel].width + " analyze");
-                //Debug.Log(synth.Pyramid[i].width + " synth");
+                Debug.Log(_analyzeList[synth.SourceLevel].width + " analyze");
+                Debug.Log(synth.Pyramid[i].width + " synth");
                 _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
                 _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i]);
 
@@ -251,18 +273,8 @@ public class NPFrame2{
         {
             _pow2S.Add((int)Mathf.Pow(2, i));
         }
-    }
-
-    private void MakePow2(ref RenderTexture source, out RenderTexture destination)
-    {
-        destination = null;
-    }
-
-    private void MakeNPow2(ref RenderTexture source, out RenderTexture destination)
-    {
-        destination = null;
-    }
-
+    }   
+        
     private void MakePow2Call(ref RenderTexture source, ref List<RenderTexture> destination)
     {
         //Set the shader uniforms
