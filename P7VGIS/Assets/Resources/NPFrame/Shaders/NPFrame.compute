@@ -28,16 +28,9 @@ float focalLength;
 float focalSize;
 float aperture;
 float farClipPlane;
+int firstPass;
+float4 blurPlanes;
 Texture2D<float4> DOF0;
-Texture2D<float4> DOF1;
-Texture2D<float4> DOF2;
-Texture2D<float4> DOF3;
-Texture2D<float4> DOF4;
-Texture2D<float4> DOF5;
-Texture2D<float4> DOF6;
-Texture2D<float4> DOF7;
-Texture2D<float4> DOF8;
-Texture2D<float4> DOF9;
 
 // Uniforms for infill effect
 int isRange;
@@ -164,31 +157,26 @@ void DOF (uint2 id : SV_DispatchThreadID)
 	uint sW, sH;
     dest.GetDimensions(sW, sH);
 	uint dW, dH;
-    DOF6.GetDimensions(dW, dH);
+    DOF0.GetDimensions(dW, dH);
 	float2 uv = float2(Remap(id.x + offset.x, 0, sW, 0, dW) / dW, Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
-
-	if(!(depth[id].r * farClipPlane <= focalLength + focalSize && depth[id].r * farClipPlane >= focalLength - focalSize))
-	{
-		dest[id + offset] = DOF6.SampleLevel(_PointClamp, uv, 0);
+	if(firstPass == 1){
+		if(!(depth[id].r * farClipPlane <= focalLength + focalSize && depth[id].r * farClipPlane >= focalLength - focalSize))
+		{
+			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
+		}
+		else dest[id + offset] = source[id + offset];
 	}
-	else dest[id + offset] = source[id + offset];
 
-	int d = 0;
-
-	switch (d){
-		case 0:
-		 // do stuff
-		 break;
-		 case 1:
-		 //do stuff
-		 break;
-		 case 2:
-		 //do stuff
-		 break;
-		 default:
-		 //do stuff
-		 break;
-		 }
+	if(firstPass == 0) {
+		if(depth[id].r * farClipPlane >= blurPlanes.x && depth[id].r * farClipPlane<= blurPlanes.y)
+		{
+			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
+		}
+		if(depth[id].r * farClipPlane<= blurPlanes.z && depth[id].r * farClipPlane >= blurPlanes.w)
+		{
+			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
+		}
+	}
 		
 }
 
