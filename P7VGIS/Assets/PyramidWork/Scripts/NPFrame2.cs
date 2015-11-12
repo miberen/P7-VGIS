@@ -74,6 +74,16 @@ public class NPFrame2{
         get { return _cSMain; }
     }
 
+    public RenderTexture GetDoneNPOT
+    {
+        get { return _done; }
+    }
+
+    public int GetNativePOTRes
+    {
+        get { return NextPow2(new Vector2(Screen.width, Screen.height)); }
+    }
+
     public RenderTexture MakeNPOT(RenderTexture source)
     {
         if (_done != null)
@@ -124,7 +134,6 @@ public class NPFrame2{
     /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
     /// <param name="targetLevel"> How many levels of synthesis to generate. </param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
-
     public void GenerateSynthesis(int sourceLevel, int targetLevel, string name)
     {
         if (!_synthDic.ContainsKey(name))
@@ -282,7 +291,6 @@ public class NPFrame2{
         _cSMain.SetTexture(_cSMain.FindKernel("MakePow2"), "dest", destination[0]);
 
         //Dispatch the compute shader 
-        // hack the index
         _cSMain.Dispatch(_cSMain.FindKernel("MakePow2"), (int)Mathf.Ceil(destination[0].width / 32), (int)Mathf.Ceil(destination[0].height / 32), 1);
     }
 

@@ -8,6 +8,7 @@ public class DoF : MonoBehaviour {
     private Camera cam = null;
     private RenderTexture depth;
     public RenderTexture donePow2;
+    public RenderTexture doneNPOT;
     public List<RenderTexture> Analstuff = new List<RenderTexture>();
     public List<RenderTexture> Synthstuff = new List<RenderTexture>();
 
@@ -23,14 +24,20 @@ public class DoF : MonoBehaviour {
 
     void Start ()
     {
+        Debug.Log("bitch");
+
         frame = new NPFrame2("DoF", 5);
         depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
         depth.Create();
         cam = GetComponent<Camera>();
 
-        donePow2 = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
         donePow2.Create();
+
+        doneNPOT = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        doneNPOT.enableRandomWrite = true;
+        doneNPOT.Create();
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
@@ -42,7 +49,11 @@ public class DoF : MonoBehaviour {
         Analstuff = frame.AnalyzeList;
         Synthstuff = frame.GetSynthesis("default").Pyramid;
 
-        Graphics.Blit(source, dest);
+        DOF(donePow2);
+
+        frame.MakeNPOT(donePow2);
+
+        Graphics.Blit(frame.GetDoneNPOT, dest);
 
     }
 
@@ -75,7 +86,7 @@ public class DoF : MonoBehaviour {
         }
         if (firstPass == 0)
         {
-            for (int i = 0; i <= 4; i++)
+            for (int i = 0; i < 3; i++)
             {
                 float blurInterval = maxBlurDist / 3;
                 float far1 = cam.nearClipPlane + focalLength + FocalSize + (blurInterval * i);

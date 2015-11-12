@@ -25,11 +25,11 @@ public class TestImplement : MonoBehaviour
     {
         frame.Analyze(ref source);
         frame.GenerateSynthesis(2, "main");
-        //frame.GenerateSynthesis(3, "gay");
+        frame.GenerateSynthesis(3, "gay");
 
         anal = frame.AnalyzeList;
         synth = frame.GetSynthesis("main").Pyramid;
-        //synthg = frame.GetSynthesis("gay").Pyramid;
+        synthg = frame.GetSynthesis("gay").Pyramid;
         //Graphics.Blit(derp.GetTex(derp.Count-1), destination);
         Graphics.Blit(source, destination);
     }
