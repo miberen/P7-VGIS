@@ -216,8 +216,6 @@ public class NPFrame2{
         {
             if (i == 0)
             {
-                Debug.Log(_analyzeList[synth.SourceLevel].width + " analyze");
-                Debug.Log(synth.Pyramid[i].width + " synth");
                 _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
                 _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i]);
 
