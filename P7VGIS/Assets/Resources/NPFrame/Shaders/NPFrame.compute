@@ -27,6 +27,7 @@ RWTexture2D<float4> dest;
 float focalLength;
 float focalSize;
 float aperture;
+float nearClipPlane;
 float farClipPlane;
 int firstPass;
 float4 blurPlanes;
@@ -131,7 +132,8 @@ void Analyze (uint2 id : SV_DispatchThreadID)
 	// Cast to float becasue HLSL is stupid and doesnt figure it out  by itself
 	float2 uv = float2((float)id.x/dW, (float)id.y/dH);
 	float2 texelSize = float2((float)1/dW, (float)1/dH);
-	dest[id] = source.SampleLevel(_LinearClamp, uv, 0);
+
+	dest[id] = source.SampleLevel(_LinearClamp, uv + (texelSize / 2), 0);
 }
 
 // TODO: Make it work
@@ -145,7 +147,7 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 
 	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
-	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0);
+	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y) , 0);
 	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
 	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
     //dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
@@ -167,7 +169,7 @@ void DOF (uint2 id : SV_DispatchThreadID)
     DOF0.GetDimensions(dW, dH);
 	float2 uv = float2(Remap(id.x + offset.x, 0, sW, 0, dW) / dW, Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
 	if(firstPass == 1){
-		if(!(depth[id].r * farClipPlane <= focalLength + focalSize && depth[id].r * farClipPlane >= focalLength - focalSize))
+		if(!(depth[id].r * farClipPlane <= focalLength + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalLength - focalSize - nearClipPlane))
 		{
 			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
@@ -175,12 +177,14 @@ void DOF (uint2 id : SV_DispatchThreadID)
 	}
 
 	if(firstPass == 0) {
-		if(depth[id].r * farClipPlane >= blurPlanes.x && depth[id].r * farClipPlane<= blurPlanes.y)
+		if(depth[id].r * farClipPlane >= blurPlanes.x) // && depth[id].r * farClipPlane<= blurPlanes.y)
 		{
+			//dest[id + offset] = float4(0,0,0,1);
 			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
-		if(depth[id].r * farClipPlane<= blurPlanes.z && depth[id].r * farClipPlane >= blurPlanes.w)
+		if(depth[id].r * farClipPlane <= blurPlanes.z) // && depth[id].r * farClipPlane >= blurPlanes.w)
 		{
+			//dest[id + offset] = float4(0,0,0,1);
 			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
 	}

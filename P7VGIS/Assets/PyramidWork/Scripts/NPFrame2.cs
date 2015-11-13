@@ -212,6 +212,14 @@ public class NPFrame2{
     {
         if (levels == 0) levels = _levels;
 
+        if (levels == 1)
+        {
+            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
+            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[0]);
+
+            _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+        }
+
         for (int i = 0; i < levels - 1; i++)
         {
             if (i == 0)

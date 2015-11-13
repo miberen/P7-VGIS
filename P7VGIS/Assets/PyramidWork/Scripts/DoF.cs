@@ -44,9 +44,9 @@ public class DoF : MonoBehaviour {
     {
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         frame.Analyze(ref source);
-        frame.GenerateSynthesis(2, "from1");
-        frame.GenerateSynthesis(3, "from2");
-        frame.GenerateSynthesis(4, "from3");
+        frame.GenerateSynthesis(1, "from1");
+        frame.GenerateSynthesis(2, "from2");
+        frame.GenerateSynthesis(3, "from3");
 
         Analstuff = frame.AnalyzeList;
         Synthstuff = frame.GetSynthesis("from1").Pyramid;
@@ -77,6 +77,7 @@ public class DoF : MonoBehaviour {
         frame.GetShader.SetInt("firstPass", firstPass);
         frame.GetShader.SetFloat("focalLength", focalLength);
         frame.GetShader.SetFloat("focalSize", FocalSize);
+        frame.GetShader.SetFloat("nearClipPlane", cam.nearClipPlane);
         frame.GetShader.SetFloat("farClipPlane", cam.farClipPlane);
 
         if (firstPass == 1)
@@ -100,13 +101,13 @@ public class DoF : MonoBehaviour {
                 frame.GetShader.SetFloats("blurPlanes", new float[] { far1, far2, near1, near2 });
                 //Set Texture
                 if(i == 0)
-                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from1").Pyramid[i + 1]);
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from1").Pyramid[frame.GetSynthesis("from1").Pyramid.Count - 1]);
 
                 if (i == 1)
-                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from2").Pyramid[i + 1]);
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from2").Pyramid[frame.GetSynthesis("from2").Pyramid.Count - 1]);
 
                 if (i == 2)
-                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from3").Pyramid[i + 1] );
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1]);
 
                 frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "dest", donePow2);
                 frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].height / 32), 1);
