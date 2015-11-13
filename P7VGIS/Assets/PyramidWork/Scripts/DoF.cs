@@ -26,7 +26,7 @@ public class DoF : MonoBehaviour {
     {
         Debug.Log("bitch");
 
-        frame = new NPFrame2("DoF", 5);
+        frame = new NPFrame2("DoF", 8);
         depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
         depth.Create();
         cam = GetComponent<Camera>();
@@ -44,10 +44,12 @@ public class DoF : MonoBehaviour {
     {
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         frame.Analyze(ref source);
-        frame.GenerateSynthesis(3, "default");
+        frame.GenerateSynthesis(2, "from1");
+        frame.GenerateSynthesis(3, "from2");
+        frame.GenerateSynthesis(4, "from3");
 
         Analstuff = frame.AnalyzeList;
-        Synthstuff = frame.GetSynthesis("default").Pyramid;
+        Synthstuff = frame.GetSynthesis("from1").Pyramid;
 
         DOF(donePow2);
 
@@ -70,7 +72,6 @@ public class DoF : MonoBehaviour {
             RaycastHit rhit;
             if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
                 focalLength = rhit.distance;
-
         }
 
         frame.GetShader.SetInt("firstPass", firstPass);
@@ -81,7 +82,7 @@ public class DoF : MonoBehaviour {
         if (firstPass == 1)
         {
             firstPass = 0;
-            frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("default").Pyramid[frame.GetSynthesis("default").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("default").Pyramid[frame.GetSynthesis("default").Pyramid.Count - 1].height / 32), 1);
+            frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].height / 32), 1);
             frame.GetShader.SetInt("firstPass", firstPass);
         }
         if (firstPass == 0)
@@ -94,14 +95,21 @@ public class DoF : MonoBehaviour {
                 float near1 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * i), 0, cam.farClipPlane);
                 float near2 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * (i + 1)), 0, cam.farClipPlane);
 
-                //Debug.Log(far1 + " \t" + far2 + " \t" + near1 + " \t" + near2);
+                Debug.Log(i + " \t" + far1 + " \t" + far2 + " \t" + near1 + " \t" + near2);
                 //Do Calc
                 frame.GetShader.SetFloats("blurPlanes", new float[] { far1, far2, near1, near2 });
                 //Set Texture
-                frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("default").Pyramid[i]);
+                if(i == 0)
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from1").Pyramid[i + 1]);
+
+                if (i == 1)
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from2").Pyramid[i + 1]);
+
+                if (i == 2)
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from3").Pyramid[i + 1] );
 
                 frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "dest", donePow2);
-                frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("default").Pyramid[frame.GetSynthesis("default").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("default").Pyramid[frame.GetSynthesis("default").Pyramid.Count - 1].height / 32), 1);
+                frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].height / 32), 1);
             }
         }
 
