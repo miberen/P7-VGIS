@@ -172,22 +172,22 @@ void Analyze4Point (uint2 id : SV_DispatchThreadID)
 [numthreads(32,32,1)]
 void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 {
-    dest[id] = (source[2*id+uint2(-1.0,-1.0)] + 
-				source[2*id+uint2(0.0,-1.0)] * 3 + 
-				source[2*id+uint2(1.0,-1.0)] * 3 + 
-				source[2*id+uint2(2.0,-1.0)] +
-				source[2*id+uint2(-1.0,0.0)] * 3 + 
-				source[2*id+uint2(0.0,0.0)] * 9 + 
-				source[2*id+uint2(1.0,0.0)] * 9 + 
-				source[2*id+uint2(2.0,0.0)] * 3 +
-				source[2*id+uint2(-1.0,1.0)] * 3 + 
-				source[2*id+uint2(0.0,1.0)] * 9 + 
-				source[2*id+uint2(1.0,1.0)] * 9 + 
-				source[2*id+uint2(2.0,1.0)] * 3 +
-				source[2*id+uint2(-1.0,2.0)] + 
-				source[2*id+uint2(0.0,2.0)] * 3 + 
-				source[2*id+uint2(1.0,2.0)] * 3 + 
-				source[2*id+uint2(2.0,2.0)])/64;
+    dest[id] = (source[2*id+int2(-1.0,-1.0)] + 
+				source[2*id+int2(0.0, -1.0)] * 3 + 
+				source[2*id+int2(1.0,-1.0)] * 3 + 
+				source[2*id+int2(2.0,-1.0)] +
+				source[2*id+int2(-1.0,0.0)] * 3 + 
+				source[2*id+int2(0.0,0.0)] * 9 + 
+				source[2*id+int2(1.0,0.0)] * 9 + 
+				source[2*id+int2(2.0,0.0)] * 3 +
+				source[2*id+int2(-1.0,1.0)] * 3 + 
+				source[2*id+int2(0.0,1.0)] * 9 + 
+				source[2*id+int2(1.0,1.0)] * 9 + 
+				source[2*id+int2(2.0,1.0)] * 3 +
+				source[2*id+int2(-1.0,2.0)] + 
+				source[2*id+int2(0.0,2.0)] * 3 + 
+				source[2*id+int2(1.0,2.0)] * 3 + 
+				source[2*id+int2(2.0,2.0)])/64;
 }
 
 [numthreads(32,32,1)]

@@ -126,7 +126,7 @@ public class DoF : MonoBehaviour
                 float blurInterval = maxBlurDist / 3;
                 float far1 = cam.nearClipPlane + focalLength + FocalSize + (blurInterval * i);
                 float far2 = cam.nearClipPlane + focalLength + FocalSize + (blurInterval * (i + 1));
-                float near1 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * i), 0, cam.farClipPlane);0000
+                float near1 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * i), 0, cam.farClipPlane);
                 float near2 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * (i + 1)), 0, cam.farClipPlane);
 
                 frame.GetShader.SetFloats("blurPlanes", new float[] { far1, far2, near1, near2 });
