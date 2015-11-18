@@ -23,7 +23,7 @@ Texture2D<float4> depth;
 RWTexture2D<float4> dest;
 //Texture2D<float4> infillRead;
 
-// Uniforms for DOF ( cuz cancer, cant pass arrays of textures from unity )
+// Uniforms for DOF 
 float focalLength;
 float focalSize;
 float aperture;
@@ -111,10 +111,9 @@ void MakePow2 (uint2 id : SV_DispatchThreadID)
 	//Actual image
     else dest[id + offset] = source[id];
 
-
 }
 
-// TODO: Make it work.
+
 [numthreads(32, 32, 1)]
 void MakeNPow2 (uint2 id : SV_DispatchThreadID)
 {
@@ -136,7 +135,24 @@ void Analyze (uint2 id : SV_DispatchThreadID)
 	dest[id] = source.SampleLevel(_LinearClamp, uv + (texelSize / 2), 0);
 }
 
-// TODO: Make it work
+[numthreads(32,32,1)]
+void Analyze16Point (uint2 id : SV_DispatchThreadID)
+{
+    //dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
+
+	uint dW, dH;
+    dest.GetDimensions(dW, dH);
+	// Cast to float becasue HLSL is stupid and doesnt figure it out  by itself
+	float2 uv = float2((float)id.x/dW, (float)id.y/dH);
+	float2 texelSize = float2((float)1/dW, (float)1/dH);
+
+	dest[id] = (source.SampleLevel(_LinearClamp, uv, 0) +
+			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x * 2, uv.y), 0) +
+			    source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y * 2), 0) +
+			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x * 2, uv.y + texelSize.y * 2), 0)
+			   )/4;
+}
+
 [numthreads(32,32,1)]
 void Synthesize (uint2 id : SV_DispatchThreadID)
 {	
