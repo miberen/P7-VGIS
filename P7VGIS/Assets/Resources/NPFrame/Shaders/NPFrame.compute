@@ -30,9 +30,11 @@ float aperture;
 float nearClipPlane;
 float farClipPlane;
 int firstPass;
+int lastPass;
 float4 blurPlanes;
 Texture2D<float4> DOF0;
-
+Texture2D<float4> DOF1;
+int debug;
 // Uniforms for infill effect
 int isRange;
 float4 infillColor;
@@ -45,7 +47,18 @@ static uint2 offset = uint2(64, 64);
 
 float Remap(float value, float from1, float to1, float from2, float to2)
 {
-	return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
+	return from2 + (value - from1) * (to2 - from2) / (to1 - from1);
+}
+
+float4 Lerp(float factor, float4  a, float4 b)
+{
+	//if(factor > 1) factor = 1;
+	return float4(factor * a.r + (1.0 - factor) * b.r, factor * a.g + (1.0 - factor) * b.g, factor * a.b + (1.0 - factor) * b.b, 1.0);
+}
+
+float InterpolateValue(float value, float scale, float x, float y)
+{
+	return 1-((value*scale - x) / (y-x));
 }
 
 // Kernels for synthesize function
@@ -185,26 +198,29 @@ void DOF (uint2 id : SV_DispatchThreadID)
     DOF0.GetDimensions(dW, dH);
 	float2 uv = float2(Remap(id.x + offset.x, 0, sW, 0, dW) / dW, Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
 	if(firstPass == 1){
-		if(!(depth[id].r * farClipPlane <= focalLength + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalLength - focalSize - nearClipPlane))
+		if((depth[id].r * farClipPlane <= focalLength + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalLength - focalSize + nearClipPlane))
 		{
 			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
-		else dest[id + offset] = source[id + offset];
 	}
 
 	if(firstPass == 0) {
-		if(depth[id].r * farClipPlane >= blurPlanes.x) // && depth[id].r * farClipPlane<= blurPlanes.y)
+		if(depth[id].r * farClipPlane > blurPlanes.x  && depth[id].r * farClipPlane < blurPlanes.y)
 		{
-			//dest[id + offset] = float4(0,0,0,1);
-			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
+			float p1;
+			p1 = InterpolateValue(depth[id].r, farClipPlane, blurPlanes.x, blurPlanes.y);			
+			dest[id + offset] = Lerp(p1, DOF1.SampleLevel(_PointClamp, uv, 0), DOF0.SampleLevel(_PointClamp, uv, 0)); //DOF0.SampleLevel(_PointClamp, uv, 0);  
 		}
-		if(depth[id].r * farClipPlane <= blurPlanes.z) // && depth[id].r * farClipPlane >= blurPlanes.w)
+		if(depth[id].r * farClipPlane < blurPlanes.z && depth[id].r * farClipPlane > blurPlanes.w)
 		{
-			//dest[id + offset] = float4(0,0,0,1);
-			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
+			float p2 = InterpolateValue(depth[id].r, farClipPlane, blurPlanes.z, blurPlanes.w);
+			dest[id + offset] = Lerp(p2, DOF1.SampleLevel(_PointClamp, uv, 0), DOF0.SampleLevel(_PointClamp, uv, 0)); //DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
+		if(depth[id].r * farClipPlane > blurPlanes.y && lastPass == 1)
+			dest[id+offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
+		if(depth[id].r * farClipPlane < blurPlanes.w && lastPass == 1)
+			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 	}
-		
 }
 
 //[numthreads(32,32,1)]

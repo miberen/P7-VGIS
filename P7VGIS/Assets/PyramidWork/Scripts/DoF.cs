@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 
 [RequireComponent(typeof(Camera))]
-public class DoF : MonoBehaviour {
+public class DoF : MonoBehaviour
+{
 
     private NPFrame2 frame;
     private Camera cam = null;
@@ -21,11 +22,11 @@ public class DoF : MonoBehaviour {
     [Range(1.0f, 30)]
     [Tooltip("F-Stop - The higher the value the more is in focus")]
     public float aperture = 4.0f;
+    [Range(4.0f, 10.0f)]
+    public float focusSpeed = 4.0f;
 
-    void Start ()
+    void Start()
     {
-        Debug.Log("bitch");
-
         frame = new NPFrame2("DoF", 8);
         depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
         depth.Create();
@@ -34,10 +35,6 @@ public class DoF : MonoBehaviour {
         donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
         donePow2.Create();
-
-        doneNPOT = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
-        doneNPOT.enableRandomWrite = true;
-        doneNPOT.Create();
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
@@ -56,22 +53,20 @@ public class DoF : MonoBehaviour {
         frame.MakeNPOT(donePow2);
 
         Graphics.Blit(frame.GetDoneNPOT, dest);
-
     }
 
     void DOF(RenderTexture dest)
     {
-
         float maxBlurDist = aperture;
         int firstPass = 1;
+        int lastPass = 0;
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "depth", depth);
-        frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "source", frame.AnalyzeList[0]);
 
         if (!FixedDepthofField)
         {
             RaycastHit rhit;
             if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
-                focalLength = rhit.distance;
+                focalLength = Mathf.Lerp(focalLength, rhit.distance, Time.deltaTime * focusSpeed);
         }
 
         frame.GetShader.SetInt("firstPass", firstPass);
@@ -83,11 +78,13 @@ public class DoF : MonoBehaviour {
         if (firstPass == 1)
         {
             firstPass = 0;
+            frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.AnalyzeList[0]);
             frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].height / 32), 1);
             frame.GetShader.SetInt("firstPass", firstPass);
         }
         if (firstPass == 0)
         {
+            frame.GetShader.SetInt("lastPass", lastPass);
             for (int i = 0; i < 3; i++)
             {
                 float blurInterval = maxBlurDist / 3;
@@ -96,21 +93,31 @@ public class DoF : MonoBehaviour {
                 float near1 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * i), 0, cam.farClipPlane);
                 float near2 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * (i + 1)), 0, cam.farClipPlane);
 
-                Debug.Log(i + " \t" + far1 + " \t" + far2 + " \t" + near1 + " \t" + near2);
-                //Do Calc
                 frame.GetShader.SetFloats("blurPlanes", new float[] { far1, far2, near1, near2 });
-                //Set Texture
-                if(i == 0)
+                if (i == 0)
+                {
                     frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from1").Pyramid[frame.GetSynthesis("from1").Pyramid.Count - 1]);
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF1", frame.AnalyzeList[0]);
+                }
 
                 if (i == 1)
+                {
                     frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from2").Pyramid[frame.GetSynthesis("from2").Pyramid.Count - 1]);
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF1", frame.GetSynthesis("from1").Pyramid[frame.GetSynthesis("from1").Pyramid.Count - 1]);
+                }
 
                 if (i == 2)
+                {
+                    lastPass = 1;
                     frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1]);
-
+                    frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF1", frame.GetSynthesis("from2").Pyramid[frame.GetSynthesis("from2").Pyramid.Count - 1]);
+                    frame.GetShader.SetInt("lastPass", lastPass);
+                    lastPass = 0;
+                }
                 frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "dest", donePow2);
                 frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3").Pyramid[frame.GetSynthesis("from3").Pyramid.Count - 1].height / 32), 1);
+
+
             }
         }
 
