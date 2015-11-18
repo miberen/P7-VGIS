@@ -4,7 +4,6 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Camera))]
 public class DoF : MonoBehaviour
 {
-
     private NPFrame2 frame;
     private Camera cam = null;
     private RenderTexture depth;
@@ -12,6 +11,10 @@ public class DoF : MonoBehaviour
     public RenderTexture doneNPOT;
     public List<RenderTexture> Analstuff = new List<RenderTexture>();
     public List<RenderTexture> Synthstuff = new List<RenderTexture>();
+
+    //this stuff is for show & tell @ computer graphics presentation
+    LineRenderer line;
+    Vector3 offsetUP = new Vector3(0.33f, 0.33f, 0);
 
     [Tooltip("Enabling Fixed mode makes the focal length static and independant on where you are looking")]
     public bool FixedDepthofField = false;
@@ -27,6 +30,7 @@ public class DoF : MonoBehaviour
 
     void Start()
     {
+        line = GetComponent<LineRenderer>();
         frame = new NPFrame2("DoF", 8);
         depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
         depth.Create();
@@ -55,6 +59,26 @@ public class DoF : MonoBehaviour
         Graphics.Blit(frame.GetDoneNPOT, dest);
     }
 
+    void OnPostRender()
+    {
+        if (!FixedDepthofField)
+        {
+            RaycastHit rhit;
+            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
+            {
+                focalLength = Mathf.Lerp(focalLength, rhit.distance, Time.deltaTime * focusSpeed);
+                line.SetPosition(0, transform.TransformPoint(offsetUP));
+                line.SetPosition(1, rhit.point);
+            }
+            else
+            {
+                focalLength = Mathf.Lerp(focalLength, 2, Time.deltaTime * focusSpeed);
+                line.SetPosition(0, transform.TransformPoint(offsetUP));
+                line.SetPosition(1, cam.transform.forward * 100);
+            }
+        }
+    }
+
     void DOF(RenderTexture dest)
     {
         float maxBlurDist = aperture;
@@ -62,12 +86,22 @@ public class DoF : MonoBehaviour
         int lastPass = 0;
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "depth", depth);
 
-        if (!FixedDepthofField)
-        {
-            RaycastHit rhit;
-            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
-                focalLength = Mathf.Lerp(focalLength, rhit.distance, Time.deltaTime * focusSpeed);
-        }
+        //if (!FixedDepthofField)
+        //{
+        //    RaycastHit rhit;
+        //    if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
+        //    {
+        //        focalLength = Mathf.Lerp(focalLength, rhit.distance, Time.deltaTime * focusSpeed);
+        //        line.SetPosition(0, transform.TransformPoint(offsetUP));
+        //        line.SetPosition(1, rhit.point);
+        //    }
+        //    else
+        //    {
+        //        focalLength = Mathf.Lerp(focalLength, 2, Time.deltaTime * focusSpeed);
+        //        line.SetPosition(0, transform.TransformPoint(offsetUP));
+        //        line.SetPosition(1, cam.transform.forward * 100);
+        //    }
+        //}
 
         frame.GetShader.SetInt("firstPass", firstPass);
         frame.GetShader.SetFloat("focalLength", focalLength);
@@ -90,7 +124,7 @@ public class DoF : MonoBehaviour
                 float blurInterval = maxBlurDist / 3;
                 float far1 = cam.nearClipPlane + focalLength + FocalSize + (blurInterval * i);
                 float far2 = cam.nearClipPlane + focalLength + FocalSize + (blurInterval * (i + 1));
-                float near1 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * i), 0, cam.farClipPlane);
+                float near1 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * i), 0, cam.farClipPlane);0000
                 float near2 = Mathf.Clamp(cam.nearClipPlane + focalLength - FocalSize - (blurInterval * (i + 1)), 0, cam.farClipPlane);
 
                 frame.GetShader.SetFloats("blurPlanes", new float[] { far1, far2, near1, near2 });
