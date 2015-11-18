@@ -2,6 +2,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Reflection;
 
 public class NPFrame2{
 
@@ -38,6 +40,7 @@ public class NPFrame2{
     private bool _isInit;
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
+    private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
 
     private RenderTexture _done;
     private RenderTexture _donePow2;
@@ -83,6 +86,25 @@ public class NPFrame2{
     {
         get { return NextPow2(new Vector2(Screen.width, Screen.height)); }
     }
+
+    public AnalysisMode GetAnalysisMode
+    {
+        get { return _analysisMode; }
+    }
+    public AnalysisMode SetAnalysisMode
+    {
+        set { _analysisMode = value; }
+    }
+
+    public enum AnalysisMode
+    {
+        [Description("Analyze")]
+        Box2x2,
+        [Description("Analyze4Point")]
+        Box4x4,
+        [Description("AnalyzeBQBS")]
+        BiQuadBSpline
+    };
 
     public RenderTexture MakeNPOT(RenderTexture source)
     {
@@ -199,12 +221,13 @@ public class NPFrame2{
 
     private void AnalyzeCall()
     {
+        Debug.Log(GetEnumDescription(_analysisMode));
         for (int i = 0; i < _levels - 1; i++)
         {
-            _cSMain.SetTexture(_cSMain.FindKernel("Analyze"), "source", _analyzeList[i]);
-            _cSMain.SetTexture(_cSMain.FindKernel("Analyze"), "dest", _analyzeList[i + 1]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "source", _analyzeList[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "dest", _analyzeList[i + 1]);
 
-            _cSMain.Dispatch(_cSMain.FindKernel("Analyze"), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
+            _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
         }
     }
 
@@ -270,6 +293,20 @@ public class NPFrame2{
         }
         return ret;
     }
+
+    public static string GetEnumDescription(Enum value)
+    {
+        FieldInfo fi = value.GetType().GetField(value.ToString());
+
+        DescriptionAttribute[] attributes =
+            (DescriptionAttribute[])fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
+
+        if (attributes != null && attributes.Length > 0)
+            return attributes[0].Description;
+        else
+            return value.ToString();
+    }
+
 
     private bool CheckCompatibility()
     {
