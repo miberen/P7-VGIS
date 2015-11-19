@@ -1,9 +1,10 @@
 ﻿#pragma kernel MakePow2
 #pragma kernel MakeNPow2
-#pragma kernel Analyze
-#pragma kernel Analyze4Point
+#pragma kernel Analyze2x2Box
+#pragma kernel Analyze4x4Box
 #pragma kernel AnalyzeBQBS
-#pragma kernel Synthesize
+#pragma kernel Synthesize2x2Box
+#pragma kernel SynthesizeBQBS
 #pragma kernel DOF
 //#pragma kernel Infill
  
@@ -137,21 +138,7 @@ void MakeNPow2 (uint2 id : SV_DispatchThreadID)
 
 
 [numthreads(32,32,1)]
-void Analyze (uint2 id : SV_DispatchThreadID)
-{
-    dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
-
-	//uint dW, dH;
- //   dest.GetDimensions(dW, dH);
-	//// Cast to float becasue HLSL is stupid and doesnt figure it out  by itself
-	//float2 uv = float2((float)id.x/dW, (float)id.y/dH);
-	//float2 texelSize = float2((float)1/dW, (float)1/dH);
-
-	//dest[id] = source.SampleLevel(_LinearClamp, uv + (texelSize / 2), 0);
-}
-
-[numthreads(32,32,1)]
-void Analyze4Point (uint2 id : SV_DispatchThreadID)
+void Analyze2x2Box (uint2 id : SV_DispatchThreadID)
 {
     //dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
 
@@ -161,41 +148,65 @@ void Analyze4Point (uint2 id : SV_DispatchThreadID)
 	float2 uv = float2((float)id.x/dW, (float)id.y/dH);
 	float2 texelSize = float2((float)1/dW, (float)1/dH);
 
+	dest[id] = source.SampleLevel(_LinearClamp, uv + (texelSize / 2), 0);
+}
+
+[numthreads(32,32,1)]
+void Analyze4x4Box (uint2 id : SV_DispatchThreadID)
+{
+    //dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
+
+	uint dW, dH;
+    dest.GetDimensions(dW, dH);
+	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
+	float2 uv = float2((float)id.x/dW, (float)id.y/dH);
+	float2 texelSize = float2((float)1/dW, (float)1/dH);
+
 	dest[id] = (source.SampleLevel(_LinearClamp, uv, 0) +
 			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y), 0) +
 			    source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0) +
 			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0)
-			   )/4;
+			   ) / 4;
 	
 }
 
 [numthreads(32,32,1)]
 void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 {
-    dest[id] = (source[2*id+int2(-1.0,-1.0)] + 
-				source[2*id+int2(0.0, -1.0)] * 3 + 
-				source[2*id+int2(1.0,-1.0)] * 3 + 
-				source[2*id+int2(2.0,-1.0)] +
-				source[2*id+int2(-1.0,0.0)] * 3 + 
-				source[2*id+int2(0.0,0.0)] * 9 + 
-				source[2*id+int2(1.0,0.0)] * 9 + 
-				source[2*id+int2(2.0,0.0)] * 3 +
-				source[2*id+int2(-1.0,1.0)] * 3 + 
-				source[2*id+int2(0.0,1.0)] * 9 + 
-				source[2*id+int2(1.0,1.0)] * 9 + 
-				source[2*id+int2(2.0,1.0)] * 3 +
-				source[2*id+int2(-1.0,2.0)] + 
-				source[2*id+int2(0.0,2.0)] * 3 + 
-				source[2*id+int2(1.0,2.0)] * 3 + 
-				source[2*id+int2(2.0,2.0)])/64;
+	uint dW, dH;
+    dest.GetDimensions(dW, dH);
+	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
+	float2 uv = float2((float)id.x/dW, (float)id.y/dH);
+	float2 texelSize = float2((float)1/dW, (float)1/dH);
+	
+	dest[id] = (source.SampleLevel(_LinearClamp, float2(uv + texelSize / 8), 0) +
+			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x / 8, uv.y + texelSize.y / 8), 0) +
+				source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x / 8, uv.y + texelSize.y - texelSize.y / 8), 0) + 
+				source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x / 8, uv.y + texelSize.y - texelSize.y / 8), 0)
+			   ) / 4;
 }
 
 [numthreads(32,32,1)]
-void Synthesize (uint2 id : SV_DispatchThreadID)
+void Synthesize2x2Box (uint2 id : SV_DispatchThreadID)
 {	
     uint sW, sH;
     source.GetDimensions(sW, sH);
-	// Cast to float becasue HLSL is stupid and doesnt figure it out  by itself
+	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
+	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+	float2 texelSize = float2((float)1/sW, (float)1/sH);
+
+	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
+	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y) , 0);
+	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
+	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
+}
+
+[numthreads(32,32,1)]
+void SynthesizeBQBS (uint2 id : SV_DispatchThreadID)
+{	
+    uint sW, sH;
+    source.GetDimensions(sW, sH);
+	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
 	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 
@@ -203,21 +214,6 @@ void Synthesize (uint2 id : SV_DispatchThreadID)
 	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/4, uv.y + texelSize.y/4) , 0);
 	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x/4, uv.y + texelSize.y - texelSize.y/4), 0);
 	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/4, uv.y + texelSize.y - texelSize.y/4), 0);
-
-	//dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
-	//dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y) , 0);
-	//dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
-	//dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
-
- //   dest[2*id+uint2(0.0, 0.0)] = ApplyKernel(id, kernel0_0);
-	//dest[2*id+uint2(0.0, 1.0)] = ApplyKernel(id, kernel0_1);
-	//dest[2*id+uint2(1.0, 0.0)] = ApplyKernel(id, kernel1_0);
-	//dest[2*id+uint2(1.0, 1.0)] = ApplyKernel(id, kernel1_1);
-
-	//dest[2*id+uint2(0.0, 0.0)] = ApplyKernel0_0(id);
-	//dest[2*id+uint2(0.0, 1.0)] = ApplyKernel0_1(id);
-	//dest[2*id+uint2(1.0, 0.0)] = ApplyKernel1_0(id);
-	//dest[2*id+uint2(1.0, 1.0)] = ApplyKernel1_1(id);
 }
 
 [numthreads(32,32,1)]

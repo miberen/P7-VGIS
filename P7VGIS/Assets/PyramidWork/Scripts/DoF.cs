@@ -12,6 +12,7 @@ public class DoF : MonoBehaviour
     public List<RenderTexture> Analstuff = new List<RenderTexture>();
     public List<RenderTexture> Synthstuff = new List<RenderTexture>();
     public NPFrame2.AnalysisMode _AnalysisMode;
+    public NPFrame2.SynthesisMode _SynthesisMode;
 
     //this stuff is for show & tell @ computer graphics presentation
     LineRenderer line;
@@ -47,9 +48,9 @@ public class DoF : MonoBehaviour
         frame.SetAnalysisMode = _AnalysisMode;
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         frame.Analyze(ref source);
-        frame.GenerateSynthesis(1, "from1");
-        frame.GenerateSynthesis(2, "from2");
-        frame.GenerateSynthesis(3, "from3");
+        frame.GenerateSynthesis(1, "from1",_SynthesisMode);
+        frame.GenerateSynthesis(2, "from2",_SynthesisMode);
+        frame.GenerateSynthesis(3, "from3",_SynthesisMode);
 
         Analstuff = frame.AnalyzeList;
         Synthstuff = frame.GetSynthesis("from1").Pyramid;
@@ -60,6 +61,7 @@ public class DoF : MonoBehaviour
 
         Graphics.Blit(frame.GetDoneNPOT, dest);
     }
+
 
     void OnPostRender()
     {

@@ -41,6 +41,7 @@ public class NPFrame2{
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
     private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
+    private SynthesisMode _synthesisMode = SynthesisMode.Box2x2;
 
     private RenderTexture _done;
     private RenderTexture _donePow2;
@@ -96,13 +97,30 @@ public class NPFrame2{
         set { _analysisMode = value; }
     }
 
+    public SynthesisMode GetSynthesisMode
+    {
+        get { return _synthesisMode; }
+    }
+    public SynthesisMode SetSynthesisMode
+    {
+        set { _synthesisMode = value; }
+    }
+
     public enum AnalysisMode
     {
-        [Description("Analyze")]
+        [Description("Analyze2x2Box")]
         Box2x2,
-        [Description("Analyze4Point")]
+        [Description("Analyze4x4Box")]
         Box4x4,
         [Description("AnalyzeBQBS")]
+        BiQuadBSpline
+    };
+
+    public enum SynthesisMode
+    {
+        [Description("Synthesize2x2Box")]
+        Box2x2,
+        [Description("SynthesizeBQBS")]
         BiQuadBSpline
     };
 
@@ -131,7 +149,7 @@ public class NPFrame2{
     /// </summary>
     /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
-    public void GenerateSynthesis(int sourceLevel, string name)
+    public void GenerateSynthesis(int sourceLevel, string name, SynthesisMode synthMode = SynthesisMode.Box2x2)
     {
         if (!_synthDic.ContainsKey(name))
         {
@@ -146,7 +164,7 @@ public class NPFrame2{
         }
         else
         {
-            SynthesizeCall(_synthDic[name], sourceLevel);
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
         
     }
@@ -231,31 +249,31 @@ public class NPFrame2{
         }
     }
 
-    private void SynthesizeCall(Synthesis synth,int levels = 0)
+    private void SynthesizeCall(Synthesis synth,int levels = 0, SynthesisMode synthMode = SynthesisMode.Box2x2)
     {
         if (levels == 0) levels = _levels;
 
         if (levels == 1)
         {
-            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
-            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[0]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[0]);
 
-            _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+            _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
         }
 
         for (int i = 0; i < levels - 1; i++)
         {
             if (i == 0)
             {
-                _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", _analyzeList[synth.SourceLevel]);
-                _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i]);
+                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
+                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i]);
 
-                _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
             }
-            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "source", synth.Pyramid[i]);
-            _cSMain.SetTexture(_cSMain.FindKernel("Synthesize"), "dest", synth.Pyramid[i + 1]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
 
-            _cSMain.Dispatch(_cSMain.FindKernel("Synthesize"), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
+            _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
         }
     }
 
