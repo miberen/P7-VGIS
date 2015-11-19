@@ -186,6 +186,8 @@ void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 			   ) / 4;
 }
 
+
+
 [numthreads(32,32,1)]
 void Synthesize2x2Box (uint2 id : SV_DispatchThreadID)
 {	

@@ -34,14 +34,15 @@ public class NPFrame2{
     private Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
     private Dictionary<string, Synthesis> _synthDic = new Dictionary<string,Synthesis>();
     private List<RenderTexture> _analyzeList = new List<RenderTexture>();
+    private List<int> _pow2S = new List<int>();
 
     private int _levels;
-    private List<int> _pow2S = new List<int>();
     private bool _isInit;
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
     private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
     private SynthesisMode _synthesisMode = SynthesisMode.Box2x2;
+    private FilterMode _filterMode = FilterMode.Bilinear;
 
     private RenderTexture _done;
     private RenderTexture _donePow2;
@@ -106,6 +107,12 @@ public class NPFrame2{
         set { _synthesisMode = value; }
     }
 
+    public FilterMode FilterMode
+    {
+        get { return _filterMode; }
+        set { _filterMode = value; }
+    }
+
     public enum AnalysisMode
     {
         [Description("Analyze2x2Box")]
@@ -159,6 +166,7 @@ public class NPFrame2{
             {
                 _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
                 _synthDic[name].Pyramid[i].enableRandomWrite = true;
+                _synthDic[name].Pyramid[i].filterMode = _filterMode;
                 _synthDic[name].Pyramid[i].Create();
             }
         }
@@ -184,6 +192,7 @@ public class NPFrame2{
             {
                 _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
                 _synthDic[name].Pyramid[i].enableRandomWrite = true;
+                _synthDic[name].Pyramid[i].filterMode = _filterMode;
                 _synthDic[name].Pyramid[i].Create();
             }
         }
@@ -221,15 +230,18 @@ public class NPFrame2{
         {
             _analyzeList.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(size) - i], _pow2S[_pow2S.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
             _analyzeList[i].enableRandomWrite = true;
+            _analyzeList[i].filterMode = _filterMode;
             _analyzeList[i].Create();
         }
 
         _donePow2 = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         _donePow2.enableRandomWrite = true;
+        _donePow2.filterMode = _filterMode;
         _donePow2.Create();
 
         _done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
         _done.enableRandomWrite = true;
+        _done.filterMode = _filterMode;
         _done.Create();
 
         _lastScreenSize = new Vector2(Screen.width, Screen.height);
@@ -239,13 +251,17 @@ public class NPFrame2{
 
     private void AnalyzeCall()
     {
-        Debug.Log(GetEnumDescription(_analysisMode));
         for (int i = 0; i < _levels - 1; i++)
         {
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "source", _analyzeList[i]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "dest", _analyzeList[i + 1]);
 
-            _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
+            if (_analyzeList[i].width > 32 || _analyzeList[i].width > 32)
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
+            else
+            {
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), 1, 1, 1);
+            }
         }
     }
 
@@ -258,7 +274,10 @@ public class NPFrame2{
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[0]);
 
-            _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+            if (synth.Pyramid[0].width > 32 || synth.Pyramid[0].width > 32)
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[0].width / 32), (int)Mathf.Ceil(synth.Pyramid[0].height / 32), 1);
+            else
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
         }
 
         for (int i = 0; i < levels - 1; i++)
@@ -273,7 +292,10 @@ public class NPFrame2{
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
 
-            _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
+            if(synth.Pyramid[i].width > 32 || synth.Pyramid[i].width > 32)
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
+            else
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
         }
     }
 

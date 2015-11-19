@@ -13,6 +13,7 @@ public class DoF : MonoBehaviour
     public List<RenderTexture> Synthstuff = new List<RenderTexture>();
     public NPFrame2.AnalysisMode _AnalysisMode;
     public NPFrame2.SynthesisMode _SynthesisMode;
+    public FilterMode _filtMode;
 
     //this stuff is for show & tell @ computer graphics presentation
     LineRenderer line;
@@ -30,10 +31,14 @@ public class DoF : MonoBehaviour
     [Range(4.0f, 10.0f)]
     public float focusSpeed = 4.0f;
 
+    private int imageIndex = 0;
+    private int listIndex = 0;
+
     void Start()
     {
         line = GetComponent<LineRenderer>();
         frame = new NPFrame2("DoF", 8);
+        
         depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
         depth.Create();
         cam = GetComponent<Camera>();
@@ -45,6 +50,7 @@ public class DoF : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
+        frame.FilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         frame.Analyze(ref source);
@@ -59,10 +65,72 @@ public class DoF : MonoBehaviour
 
         frame.MakeNPOT(donePow2);
 
-        Graphics.Blit(frame.GetDoneNPOT, dest);
+        //Graphics.Blit(frame.GetDoneNPOT, dest);
+
+
+        switch (listIndex)
+        {
+            case 0:
+                Graphics.Blit(frame.GetDoneNPOT, dest);
+                Debug.Log("original");
+                break;
+            case 1:
+                Graphics.Blit(Analstuff[imageIndex], dest);
+                break;
+            case 2:
+                Graphics.Blit(frame.GetSynthesis("from3").Pyramid[imageIndex], dest);
+                break;
+            case 3:
+                Graphics.Blit(frame.GetSynthesis("from2").Pyramid[imageIndex], dest);
+                break;
+            case 4:
+                Graphics.Blit(frame.GetSynthesis("from1").Pyramid[imageIndex], dest);
+                break;
+            default:
+                Debug.Log("U dun goofed");
+                break;
+        }
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Keypad8))
+        {
+            imageIndex += 1;
+            if (imageIndex >= Analstuff.Count)
+                imageIndex = 0;
+            
+        }
 
+        if (Input.GetKeyDown(KeyCode.Keypad2))
+        {
+            imageIndex -= 1;
+            if (imageIndex >= Analstuff.Count)
+                imageIndex = 0;
+            if (imageIndex == -1)
+                imageIndex = Analstuff.Count - 1;
+
+        }
+
+        if (Input.GetKeyDown(KeyCode.Keypad6))
+        {
+            listIndex += 1;
+            imageIndex = 0;
+            if (listIndex >= 5)
+                listIndex = 0;
+
+        }
+
+        if (Input.GetKeyDown(KeyCode.Keypad4))
+        {
+            listIndex -= 1;
+            imageIndex = 0;
+            if (listIndex >= 5)
+                listIndex = 0;
+            if (listIndex == -1)
+                listIndex = 4;
+        }
+    }
     void OnPostRender()
     {
         if (!FixedDepthofField)
