@@ -72,7 +72,7 @@ public class DoF : MonoBehaviour
         {
             case 0:
                 Graphics.Blit(frame.GetDoneNPOT, dest);
-                Debug.Log("original");
+              //  Debug.Log("original");
                 break;
             case 1:
                 Graphics.Blit(Analstuff[imageIndex], dest);
@@ -87,9 +87,11 @@ public class DoF : MonoBehaviour
                 Graphics.Blit(frame.GetSynthesis("from1").Pyramid[imageIndex], dest);
                 break;
             default:
-                Debug.Log("U dun goofed");
+                //Debug.Log("U dun goofed");
                 break;
         }
+        //RenderTexture aids = dest;
+        //Debug.Log(aids.sRGB.ToString());
     }
 
     void Update()
