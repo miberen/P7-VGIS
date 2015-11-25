@@ -14,6 +14,7 @@ public class DoF : MonoBehaviour
     public NPFrame2.AnalysisMode _AnalysisMode;
     public NPFrame2.SynthesisMode _SynthesisMode;
     public FilterMode _filtMode;
+    public RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
     //this stuff is for show & tell @ computer graphics presentation
     LineRenderer line;
@@ -36,6 +37,7 @@ public class DoF : MonoBehaviour
 
     void Start()
     {
+        
         line = GetComponent<LineRenderer>();
         frame = new NPFrame2("DoF", 8);
         
@@ -43,13 +45,14 @@ public class DoF : MonoBehaviour
         depth.Create();
         cam = GetComponent<Camera>();
 
-        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.TextureFormat, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
         donePow2.Create();
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
+        frame.TextureFormat = _textureFormat;
         frame.FilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));

@@ -43,6 +43,7 @@ public class NPFrame2{
     private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
     private SynthesisMode _synthesisMode = SynthesisMode.Box2x2;
     private FilterMode _filterMode = FilterMode.Bilinear;
+    private RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
     private RenderTexture _done;
     private RenderTexture _donePow2;
@@ -113,6 +114,12 @@ public class NPFrame2{
         set { _filterMode = value; }
     }
 
+    public RenderTextureFormat TextureFormat
+    {
+        get { return _textureFormat; }
+        set { _textureFormat = value; }
+    }
+
     public enum AnalysisMode
     {
         [Description("Analyze2x2Box")]
@@ -164,7 +171,7 @@ public class NPFrame2{
 
             for (int i = 0; i < sourceLevel; i++)
             {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
                 _synthDic[name].Pyramid[i].enableRandomWrite = true;
                 _synthDic[name].Pyramid[i].filterMode = _filterMode;
                 _synthDic[name].Pyramid[i].Create();
@@ -190,7 +197,7 @@ public class NPFrame2{
 
             for (int i = 0; i < _analyzeList.Count - sourceLevel; i++)
             {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
                 _synthDic[name].Pyramid[i].enableRandomWrite = true;
                 _synthDic[name].Pyramid[i].filterMode = _filterMode;
                 _synthDic[name].Pyramid[i].Create();
@@ -228,18 +235,18 @@ public class NPFrame2{
 
         for (int i = 0; i < _levels; i++)
         {
-            _analyzeList.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(size) - i], _pow2S[_pow2S.IndexOf(size) - i], 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear));
+            _analyzeList.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(size) - i], _pow2S[_pow2S.IndexOf(size) - i], 0, _textureFormat, RenderTextureReadWrite.Linear));
             _analyzeList[i].enableRandomWrite = true;
             _analyzeList[i].filterMode = _filterMode;
             _analyzeList[i].Create();
         }
 
-        _donePow2 = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        _donePow2 = new RenderTexture(size, size, 0, _textureFormat, RenderTextureReadWrite.Linear);
         _donePow2.enableRandomWrite = true;
         _donePow2.filterMode = _filterMode;
         _donePow2.Create();
 
-        _done = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+        _done = new RenderTexture(Screen.width, Screen.height, 0, _textureFormat, RenderTextureReadWrite.Linear);
         _done.enableRandomWrite = true;
         _done.filterMode = _filterMode;
         _done.Create();
