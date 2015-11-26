@@ -1,4 +1,5 @@
-﻿#pragma kernel MakePow2
+﻿// Declare kernels, these are basically method declarations Unity uses to access the shader.
+#pragma kernel MakePow2
 #pragma kernel MakeNPow2
 #pragma kernel Analyze2x2Box
 #pragma kernel Analyze4x4Box
@@ -8,19 +9,19 @@
 #pragma kernel DOF
 //#pragma kernel Infill
  
-// Declare functions
+// Declare kernel functions
 float4 ApplyKernel(uint2 id, float3x3 kernel);
 float4 ApplyKernel0_0(uint2 id);
 float4 ApplyKernel0_1(uint2 id);
 float4 ApplyKernel1_0(uint2 id);
 float4 ApplyKernel1_1(uint2 id);
 
-// Variables for changing billenear sampling mode
+// Variables for changing sampling mode, clamp ignores UV inputs above 1 or below 0, repeat wraps around.
 SamplerState _LinearClamp;
 SamplerState _LinearRepeat;
 SamplerState _PointClamp;
 
-// Uniforms for source and destination textures, Texture2D for read only on source, RWTexture2D for read / write access to destination texture
+// Uniforms for source and destination textures, Texture2D for read only on source, RWTexture2D for write access to destination texture
 Texture2D<float4> source;
 Texture2D<float4> depth;
 RWTexture2D<float4> dest;

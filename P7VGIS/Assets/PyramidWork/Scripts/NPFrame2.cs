@@ -31,7 +31,7 @@ public class NPFrame2{
         }
     };
 
-    private Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
+    private static Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
     private Dictionary<string, Synthesis> _synthDic = new Dictionary<string,Synthesis>();
     private List<RenderTexture> _analyzeList = new List<RenderTexture>();
     private List<int> _pow2S = new List<int>();
@@ -111,6 +111,12 @@ public class NPFrame2{
     {
         get { return _filterMode; }
         set { _filterMode = value; }
+    }
+
+    public static Dictionary<string, NPFrame2> MasterDic
+    {
+        get { return _masterDic; }
+        set { _masterDic = value; }
     }
 
     public enum AnalysisMode
