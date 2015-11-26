@@ -33,7 +33,7 @@ public class NPFrame2{
         {
             get { return _synths[index]; }
         }
-
+        
         public int Count
         {
             get { return _synths.Count; }
@@ -213,12 +213,19 @@ public class NPFrame2{
         return null;
     }
 
+    /// <summary>
+    /// Handles creating a power of 2 image and starting analyzastion.
+    /// </summary>
+    /// <param name="source">The texture to be analysed.</param>
     public void Analyze(ref RenderTexture source)
     {
+        // Checks if the analyze list is created or if the screen size has changed. If it has then reinit the list
         if (!_isInit || _lastScreenSize != new Vector2(Screen.width, Screen.height)) InitAnalyze(ref source);
 
+        // Create the power of 2 texture.
         MakePow2Call(ref source, ref _analyzeList);
 
+        // Set the textures and dispatch the shader to create analysis pyramid.
         AnalyzeCall();
     }
 
@@ -229,10 +236,13 @@ public class NPFrame2{
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
     public void GenerateSynthesis(int sourceLevel, string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
+        // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
         {
+            // Add the new synthesis in the dictionary.
             _synthDic.Add(name, new Synthesis(sourceLevel));
 
+            // Fill the list in synthesis.
             for (int i = 0; i < sourceLevel; i++)
             {
                 _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
@@ -240,8 +250,11 @@ public class NPFrame2{
                 _synthDic[name][i].filterMode = _filterMode;
                 _synthDic[name][i].Create();
             }
+
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
-        else if (_synthDic.ContainsKey(name) && sourceLevel == _synthDic[name].SourceLevel)
+        // If it does exist but the size is different, delete the old one and make a new one with the right size.
+        else if (_synthDic.ContainsKey(name) && sourceLevel != _synthDic[name].SourceLevel)
         {
             foreach (RenderTexture rT in _synthDic[name].Pyramid)
             {
@@ -259,7 +272,10 @@ public class NPFrame2{
                 _synthDic[name][i].filterMode = _filterMode;
                 _synthDic[name][i].Create();
             }
+
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
+        // if everything is good, just do the call to generate the synthesis in the list.
         else
         {
             SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
@@ -267,6 +283,10 @@ public class NPFrame2{
         
     }
 
+    /// <summary>
+    /// Inits basic stuff like the adding each generated framework to the master list, setting the shader and making the list of POTs.
+    /// </summary>
+    /// <param name="name">The name of this instance of the framework.</param>
     private void BasicInit(string name)
     {
         if (CheckCompatibility())
@@ -277,6 +297,10 @@ public class NPFrame2{
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="source"></param>
     private void InitAnalyze(ref RenderTexture source)
     {
         foreach (RenderTexture rT in _analyzeList)
