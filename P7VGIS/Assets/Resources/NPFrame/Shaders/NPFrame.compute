@@ -54,9 +54,8 @@ float Remap(float value, float from1, float to1, float from2, float to2)
 	return from2 + (value - from1) * (to2 - from2) / (to1 - from1);
 }
 
-float4 Lerp(float factor, float4  a, float4 b)
+float4 Lerp(float factor, float4 a, float4 b)
 {
-	//if(factor > 1) factor = 1;
 	return float4(factor * a.r + (1.0 - factor) * b.r, factor * a.g + (1.0 - factor) * b.g, factor * a.b + (1.0 - factor) * b.b, 1.0);
 }
 
@@ -227,14 +226,16 @@ void DOF (uint2 id : SV_DispatchThreadID)
 	uint dW, dH;
     DOF0.GetDimensions(dW, dH);
 	float2 uv = float2(Remap(id.x + offset.x, 0, sW, 0, dW) / dW, Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
-	if(firstPass == 1){
+	if(firstPass == 1)
+	{
 		if((depth[id].r * farClipPlane <= focalLength + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalLength - focalSize + nearClipPlane))
 		{
 			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
 	}
 
-	if(firstPass == 0) {
+	if(firstPass == 0) 
+	{
 		if(depth[id].r * farClipPlane > blurPlanes.x  && depth[id].r * farClipPlane < blurPlanes.y)
 		{
 			float p1;
@@ -338,3 +339,59 @@ float4 ApplyKernel1_1(uint2 id)
 
 	return sum/16;
 }
+ /*
+ int3 CnvRBGtoYCbCr(float4 RBGColor) 
+ {
+	int y;
+	int cb;
+	int cr;
+
+	y = (RBGColor.r * 256 * 0.229 ) + (RBGColor.g * 256 * 0.587) + (RBGColor.b * 256 * 0.114);
+	cb = 128 + (-0.169 * RBGColor.r * 256) + (-0.331 * RBGColor.g * 256) + (0.5 * RBGColor.b * 256);
+	cr = 128 + (0.5* RBGColor.r * 256) + (-0.419 * RBGColor.g * 256) + (-0.081 * RBGColor.b * 256);
+
+ 	return int3(y, cb, cr);
+ }
+
+ float4 CnvYCbCrtoRBG(int3 YCbCr)
+ {
+	float r;
+	float g;
+	float b;
+
+	r = ((1*YCbCr.x)+(1.4*(YCbCr.z-128)))/256;
+	g = ((1*YCbCr.x)+(-0.343*(YCbCr.y-128))+(-0.711*(YCbCr.z-128)))/256;
+	b = ((1*YCbCr.x)+(1.765*(YCbCr.y-128)))/256;
+
+	return float4(r, g, b, 1);
+ }
+
+ int histogram[256] = 0;
+ int cumHistogram[256] = 0;
+ int lut[256] = 0;
+ int minvalue = 0;
+ int totalpixels = source.width * source.heigth;
+
+ histogram[CnvRBGtoYCbCr(source[id]).x] += 1; // histogram[CnvRBGtoYCbCr(source[id]).x] + 1;
+ cumHistogram[0] = histogram[0];
+
+ for(int i = 1; i <= 255; i++)
+ {
+	cumHistogram[i] = cumHistogram[i-1] + histogram[i];
+ }
+
+ for(int i = 0; i <= 255; i++)
+ {
+	if(cumHistogram[i] 1= 0 && minvalue == 0)
+		minvalue = cumHistogram[i];
+ }
+
+ for(int i = i; i <= 255; i++)
+ {
+	lut[i] = (cumHistogram[i] - minvalue)/(totalpixels - minvalue)*256;
+ }
+
+ int3 oldYCbCrvalue = CnvRBGtoYCbCr(source[id]);
+ int3 newYCbCrvalue = int3(lut[oldYCbCrvalue.x], oldYCbCrvalue.y, oldYCbCrvalue.z]
+ dest[id] = CnvYCbCrtoRGB(newYCbCrvalue);
+ */	
