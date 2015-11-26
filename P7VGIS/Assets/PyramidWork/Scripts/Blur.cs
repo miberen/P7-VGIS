@@ -20,15 +20,15 @@ public class Blur : MonoBehaviour
     {
         frame = new NPFrame2("Blur", 8);     
 
-        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.TextureFormat, RenderTextureReadWrite.Linear);
+        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
         donePow2.Create();
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
-        frame.TextureFormat = _textureFormat;
-        frame.FilterMode = _filtMode;
+        frame.SetTextureFormat = _textureFormat;
+        frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
         frame.Analyze(ref source);
         frame.GenerateSynthesis(blurStrength, "Synth",_SynthesisMode);

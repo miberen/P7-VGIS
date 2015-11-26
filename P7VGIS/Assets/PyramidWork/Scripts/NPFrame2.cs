@@ -6,13 +6,14 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
 
-public class NPFrame2{
+public class NPFrame2
+{
 
     public class Synthesis
     {
         private List<RenderTexture> _synths;
-        private int  _analyzedFrom;
-        
+        private int _analyzedFrom;
+
         /// <summary>
         /// Generates a synthesis object. This holds a list of RenderTextures that corresponds to one synthesis as well as where it is analyzed from.
         /// </summary>
@@ -33,13 +34,13 @@ public class NPFrame2{
         {
             get { return _synths[index]; }
         }
-        
+
         public int Count
         {
             get { return _synths.Count; }
         }
 
-        public List<RenderTexture> Pyramid 
+        public List<RenderTexture> Pyramid
         {
             get { return _synths; }
         }
@@ -50,7 +51,7 @@ public class NPFrame2{
     // Static to allow access in any script, lets user reuse the same pyramids again.
     private static Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
 
-    private Dictionary<string, Synthesis> _synthDic = new Dictionary<string,Synthesis>();
+    private Dictionary<string, Synthesis> _synthDic = new Dictionary<string, Synthesis>();
     private List<RenderTexture> _analyzeList = new List<RenderTexture>();
     private List<int> _pow2S = new List<int>();
 
@@ -176,8 +177,8 @@ public class NPFrame2{
     }
     #endregion
 
-   // Enums to allow us to change certain parameters. Descriptions let them return strings via a custom function later in the script, this allows us to directly call the compute shader
-   // with the enums.
+    // Enums to allow us to change certain parameters. Descriptions let them return strings via a custom function later in the script, this allows us to directly call the compute shader
+    // with the enums.
 
     public enum AnalysisMode
     {
@@ -280,7 +281,7 @@ public class NPFrame2{
         {
             SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
-        
+
     }
 
     /// <summary>
@@ -308,7 +309,7 @@ public class NPFrame2{
             if (rT.IsCreated())
             {
                 rT.Release();
-            }            
+            }
         }
 
         _analyzeList.Clear();
@@ -353,7 +354,7 @@ public class NPFrame2{
         }
     }
 
-    private void SynthesizeCall(Synthesis synth,int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
+    private void SynthesizeCall(Synthesis synth, int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
         if (levels == 0) levels = _levels;
 
@@ -380,7 +381,7 @@ public class NPFrame2{
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
 
-            if(synth.Pyramid[i].width > 32 || synth.Pyramid[i].width > 32)
+            if (synth.Pyramid[i].width > 32 || synth.Pyramid[i].width > 32)
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
             else
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
@@ -458,8 +459,8 @@ public class NPFrame2{
         {
             _pow2S.Add((int)Mathf.Pow(2, i));
         }
-    }   
-        
+    }
+
     private void MakePow2Call(ref RenderTexture source, ref List<RenderTexture> destination)
     {
         //Set the shader uniforms

@@ -12,7 +12,7 @@ public class HistEq : MonoBehaviour
     {
         frame = new NPFrame2("Stuff", 3);
 
-        donePow2 = new RenderTexture(Screen.width, Screen.height, 0, frame.TextureFormat, RenderTextureReadWrite.Linear);
+        donePow2 = new RenderTexture(Screen.width, Screen.height, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
         donePow2.Create();
     }
