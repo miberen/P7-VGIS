@@ -36,8 +36,7 @@ public class DoF : MonoBehaviour
     private int listIndex = 0;
 
     void Start()
-    {
-        
+    {        
         line = GetComponent<LineRenderer>();
         frame = new NPFrame2("DoF", 8);
         
@@ -45,15 +44,15 @@ public class DoF : MonoBehaviour
         depth.Create();
         cam = GetComponent<Camera>();
 
-        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.TextureFormat, RenderTextureReadWrite.Linear);
+        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
         donePow2.Create();
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
-        frame.TextureFormat = _textureFormat;
-        frame.FilterMode = _filtMode;
+        frame.SetTextureFormat = _textureFormat;
+        frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
         frame.Analyze(ref source);

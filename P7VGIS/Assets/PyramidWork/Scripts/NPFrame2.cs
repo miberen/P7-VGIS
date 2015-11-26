@@ -4,25 +4,39 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
 
 public class NPFrame2{
 
     public class Synthesis
     {
         private List<RenderTexture> _synths;
-        private int _analyzedFrom;
-        private int _levels;
-
+        private int  _analyzedFrom;
+        
+        /// <summary>
+        /// Generates a synthesis object. This holds a list of RenderTextures that corresponds to one synthesis as well as where it is analyzed from.
+        /// </summary>
+        /// <param name="analyzedFrom"> The analysation level this synthesis is generated from.</param>
         internal Synthesis(int analyzedFrom)
         {
             _analyzedFrom = analyzedFrom;
             _synths = new List<RenderTexture>();
-            _levels = _synths.Count;
         }
 
         public int SourceLevel
         {
             get { return _analyzedFrom; }
+        }
+
+        // Creates an indexer for the list on the class so you can access the list directly.
+        public RenderTexture this[int index]
+        {
+            get { return _synths[index]; }
+        }
+
+        public int Count
+        {
+            get { return _synths.Count; }
         }
 
         public List<RenderTexture> Pyramid 
@@ -31,7 +45,11 @@ public class NPFrame2{
         }
     };
 
+    #region Variables
+
+    // Static to allow access in any script, lets user reuse the same pyramids again.
     private static Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
+
     private Dictionary<string, Synthesis> _synthDic = new Dictionary<string,Synthesis>();
     private List<RenderTexture> _analyzeList = new List<RenderTexture>();
     private List<int> _pow2S = new List<int>();
@@ -41,29 +59,54 @@ public class NPFrame2{
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
     private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
-    private SynthesisMode _synthesisMode = SynthesisMode.Box2x2;
+    private SynthesisMode _synthesisMode = SynthesisMode.BiQuadBSpline;
     private FilterMode _filterMode = FilterMode.Bilinear;
     private RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
     private RenderTexture _done;
     private RenderTexture _donePow2;
 
+    #endregion
+
+    #region Constructors
+
+    //Different constructors depending on how the user wants to specify source and target levels.
+
+    /// <summary>
+    /// Creates an instance of the framework which analyses all the way down to 1x1 pixels.
+    /// </summary>
+    /// <param name="name">The name used to access this framework in the MasterList.</param>
     [Obsolete("Use other constructors for now")]
     public NPFrame2(string name)
     {
         BasicInit(name);
     }
 
+    /// <summary>
+    /// Creates an instance of the framework which analyses down the specified amount of times.
+    /// </summary>
+    /// <param name="name">The name used to access this framework in the MasterList.</param>
+    /// <param name="analyzeLevels">How many analysation levels to generate.</param>
     public NPFrame2(string name, int analyzeLevels)
     {
         _levels = analyzeLevels;
         BasicInit(name);
     }
 
+    /// <summary>
+    /// Creates an instance of the framework which analyses down to the specified resolution.
+    /// </summary>
+    /// <param name="name">The name used to access this framework in the MasterList.</param>
+    /// <param name="analyzeRes">The target resolution of the analysis.</param>
     public NPFrame2(string name, Vector2 analyzeRes)
     {
+        _levels = LevelFromRes(analyzeRes);
         BasicInit(name);
     }
+
+    #endregion
+
+    #region Properties
 
     public List<RenderTexture> AnalyzeList
     {
@@ -108,23 +151,33 @@ public class NPFrame2{
         set { _synthesisMode = value; }
     }
 
-    public FilterMode FilterMode
+    public FilterMode GetFilterMode
     {
         get { return _filterMode; }
+    }
+
+    public FilterMode SetFilterMode
+    {
         set { _filterMode = value; }
     }
 
     public static Dictionary<string, NPFrame2> MasterDic
     {
         get { return _masterDic; }
-        set { _masterDic = value; }
     }
 
-    public RenderTextureFormat TextureFormat
+    public RenderTextureFormat GetTextureFormat
     {
         get { return _textureFormat; }
+    }
+    public RenderTextureFormat SetTextureFormat
+    {
         set { _textureFormat = value; }
     }
+    #endregion
+
+   // Enums to allow us to change certain parameters. Descriptions let them return strings via a custom function later in the script, this allows us to directly call the compute shader
+   // with the enums.
 
     public enum AnalysisMode
     {
@@ -138,12 +191,17 @@ public class NPFrame2{
 
     public enum SynthesisMode
     {
-        [Description("Synthesize2x2Box")]
-        Box2x2,
+        //[Description("Synthesize2x2Box")]
+        //Box2x2,
         [Description("SynthesizeBQBS")]
         BiQuadBSpline
     };
 
+    /// <summary>
+    /// Creates a NPOT texture from a POT texture, must be a 0
+    /// </summary>
+    /// <param name="source"></param>
+    /// <returns></returns>
     public RenderTexture MakeNPOT(RenderTexture source)
     {
         if (_done != null)
@@ -169,7 +227,7 @@ public class NPFrame2{
     /// </summary>
     /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
-    public void GenerateSynthesis(int sourceLevel, string name, SynthesisMode synthMode = SynthesisMode.Box2x2)
+    public void GenerateSynthesis(int sourceLevel, string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
         if (!_synthDic.ContainsKey(name))
         {
@@ -178,9 +236,28 @@ public class NPFrame2{
             for (int i = 0; i < sourceLevel; i++)
             {
                 _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
-                _synthDic[name].Pyramid[i].enableRandomWrite = true;
-                _synthDic[name].Pyramid[i].filterMode = _filterMode;
-                _synthDic[name].Pyramid[i].Create();
+                _synthDic[name][i].enableRandomWrite = true;
+                _synthDic[name][i].filterMode = _filterMode;
+                _synthDic[name][i].Create();
+            }
+        }
+        else if (_synthDic.ContainsKey(name) && sourceLevel == _synthDic[name].SourceLevel)
+        {
+            foreach (RenderTexture rT in _synthDic[name].Pyramid)
+            {
+                if (rT.IsCreated())
+                {
+                    rT.Release();
+                }
+                _synthDic[name].Pyramid.Clear();
+            }
+
+            for (int i = 0; i < sourceLevel; i++)
+            {
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
+                _synthDic[name][i].enableRandomWrite = true;
+                _synthDic[name][i].filterMode = _filterMode;
+                _synthDic[name][i].Create();
             }
         }
         else
@@ -188,32 +265,6 @@ public class NPFrame2{
             SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
         
-    }
-    /// <summary>
-    /// Generates a synthesis from a specified non-zero based source level of the analyzation pyramid.
-    /// </summary>
-    /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
-    /// <param name="targetLevel"> How many levels of synthesis to generate. </param>
-    /// <param name="name"> Name of the synthesis, used to access it later.</param>
-    public void GenerateSynthesis(int sourceLevel, int targetLevel, string name)
-    {
-        if (!_synthDic.ContainsKey(name))
-        {
-            _synthDic.Add(name, new Synthesis(sourceLevel));
-
-            for (int i = 0; i < _analyzeList.Count - sourceLevel; i++)
-            {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
-                _synthDic[name].Pyramid[i].enableRandomWrite = true;
-                _synthDic[name].Pyramid[i].filterMode = _filterMode;
-                _synthDic[name].Pyramid[i].Create();
-            }
-        }
-        else
-        {
-            SynthesizeCall(_synthDic[name], sourceLevel);
-        }
-
     }
 
     private void BasicInit(string name)
@@ -278,7 +329,7 @@ public class NPFrame2{
         }
     }
 
-    private void SynthesizeCall(Synthesis synth,int levels = 0, SynthesisMode synthMode = SynthesisMode.Box2x2)
+    private void SynthesizeCall(Synthesis synth,int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
         if (levels == 0) levels = _levels;
 
@@ -324,6 +375,11 @@ public class NPFrame2{
         return final;
     }
 
+    /// <summary>
+    /// Calculates the non-zero based index / level of a specified resolution in the analysis pyramid.
+    /// </summary>
+    /// <param name="res">The resolution to find the corresponding level of.</param>
+    /// <returns></returns>
     private int LevelFromRes(Vector2 res)
     {
         int ret = -1;
