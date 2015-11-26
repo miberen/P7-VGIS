@@ -3,9 +3,11 @@
 #pragma kernel Analyze2x2Box
 #pragma kernel Analyze4x4Box
 #pragma kernel AnalyzeBQBS
-#pragma kernel Synthesize2x2Box
+//#pragma kernel Synthesize2x2Box
 #pragma kernel SynthesizeBQBS
 #pragma kernel DOF
+#pragma kernel Blur
+#pragma kernel HistogramEq
 //#pragma kernel Infill
  
 // Declare functions
@@ -14,6 +16,8 @@ float4 ApplyKernel0_0(uint2 id);
 float4 ApplyKernel0_1(uint2 id);
 float4 ApplyKernel1_0(uint2 id);
 float4 ApplyKernel1_1(uint2 id);
+int3 CnvRBGtoYCbCr(float4 RBGColor);
+float4 CnvYCbCrtoRBG(int3 YCbCr); 
 
 // Variables for changing billenear sampling mode
 SamplerState _LinearClamp;
@@ -38,6 +42,7 @@ float4 blurPlanes;
 Texture2D<float4> DOF0;
 Texture2D<float4> DOF1;
 int debug;
+
 // Uniforms for infill effect
 int isRange;
 float4 infillColor;
@@ -187,20 +192,20 @@ void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 
 
 
-[numthreads(32,32,1)]
-void Synthesize2x2Box (uint2 id : SV_DispatchThreadID)
-{	
-    uint sW, sH;
-    source.GetDimensions(sW, sH);
-	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
-	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
-	float2 texelSize = float2((float)1/sW, (float)1/sH);
+//[numthreads(32,32,1)]
+//void Synthesize2x2Box (uint2 id : SV_DispatchThreadID)
+//{	
+//    uint sW, sH;
+//    source.GetDimensions(sW, sH);
+//	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
+//	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+//	float2 texelSize = float2((float)1/sW, (float)1/sH);
 
-	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
-	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y) , 0);
-	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
-	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
-}
+//	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
+//	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y) , 0);
+//	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
+//	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
+//}
 
 [numthreads(32,32,1)]
 void SynthesizeBQBS (uint2 id : SV_DispatchThreadID)
@@ -253,6 +258,60 @@ void DOF (uint2 id : SV_DispatchThreadID)
 	}
 }
 
+[numthreads(32,32,1)]
+void Blur (uint2 id : SV_DispatchThreadID)
+{
+	dest[id+offset] = source[id+offset];
+
+}
+
+[numthreads(32,32,1)]
+void HistogramEq(uint2 id : SV_DispatchThreadID)
+{
+
+
+		 uint sW, sH;
+		 source.GetDimensions(sW, sH);
+		 int histogram[256];
+		 int cumHistogram[256];
+		 int lut[256];
+		 int minvalue = 0;
+		 int totalpixels = sW * sH;
+			
+	if(firstPass == 1) {	
+
+		for(int i = 0; i <= 255; i++){
+		histogram[i] = 0;
+		}
+
+		 histogram[CnvRBGtoYCbCr(source[id]).x] += 1; // histogram[CnvRBGtoYCbCr(source[id]).x] + 1;
+
+		 cumHistogram[0] = histogram[0];
+		
+		 for(int i = 1; i <= 255; i++)
+		 {
+			cumHistogram[i] = cumHistogram[i-1] + histogram[i];
+		 }
+		
+		 for(int i = 0; i <= 255; i++)
+		 {
+			if(cumHistogram[i] != 0 && minvalue == 0)
+				minvalue = cumHistogram[i];
+		 }
+		
+		 for(int i = 0; i <= 255; i++)
+		 {
+			lut[i] = (cumHistogram[i] - minvalue)/(totalpixels - minvalue)*256;
+		 }
+	 }
+	
+	if(firstPass == 0){
+		int3 oldYCbCrvalue = CnvRBGtoYCbCr(source[id]);
+		int3 newYCbCrvalue = int3(lut[oldYCbCrvalue.x], oldYCbCrvalue.y, oldYCbCrvalue.z);
+		dest[id] = CnvYCbCrtoRBG(newYCbCrvalue);
+	 }
+	
+}
 //[numthreads(32,32,1)]
 //void Infill (uint2 id : SV_DispatchThreadID, uint id1D : SV_GroupIndex)
 //{	
@@ -338,7 +397,7 @@ float4 ApplyKernel1_1(uint2 id)
 
 	return sum/16;
 }
- /*
+
  int3 CnvRBGtoYCbCr(float4 RBGColor) 
  {
 	int y;
@@ -364,33 +423,3 @@ float4 ApplyKernel1_1(uint2 id)
 
 	return float4(r, g, b, 1);
  }
-
- int histogram[256] = 0;
- int cumHistogram[256] = 0;
- int lut[256] = 0;
- int minvalue = 0;
- int totalpixels = source.width * source.heigth;
-
- histogram[CnvRBGtoYCbCr(source[id]).x] += 1; // histogram[CnvRBGtoYCbCr(source[id]).x] + 1;
- cumHistogram[0] = histogram[0];
-
- for(int i = 1; i <= 255; i++)
- {
-	cumHistogram[i] = cumHistogram[i-1] + histogram[i];
- }
-
- for(int i = 0; i <= 255; i++)
- {
-	if(cumHistogram[i] 1= 0 && minvalue == 0)
-		minvalue = cumHistogram[i];
- }
-
- for(int i = i; i <= 255; i++)
- {
-	lut[i] = (cumHistogram[i] - minvalue)/(totalpixels - minvalue)*256;
- }
-
- int3 oldYCbCrvalue = CnvRBGtoYCbCr(source[id]);
- int3 newYCbCrvalue = int3(lut[oldYCbCrvalue.x], oldYCbCrvalue.y, oldYCbCrvalue.z]
- dest[id] = CnvYCbCrtoRGB(newYCbCrvalue);
- */	

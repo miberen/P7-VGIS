@@ -16,9 +16,9 @@ public class DoF : MonoBehaviour
     public FilterMode _filtMode;
     public RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
-    //this stuff is for show & tell @ computer graphics presentation
-    LineRenderer line;
-    Vector3 offsetUP = new Vector3(0.33f, 0.33f, 0);
+    ////this stuff is for show & tell @ computer graphics presentation
+    //LineRenderer line;
+    //Vector3 offsetUP = new Vector3(0.33f, 0.33f, 0);
 
     [Tooltip("Enabling Fixed mode makes the focal length static and independant on where you are looking")]
     public bool FixedDepthofField = false;
@@ -38,7 +38,7 @@ public class DoF : MonoBehaviour
     void Start()
     {
         
-        line = GetComponent<LineRenderer>();
+        //line = GetComponent<LineRenderer>();
         frame = new NPFrame2("DoF", 8);
         
         depth = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
@@ -144,14 +144,14 @@ public class DoF : MonoBehaviour
             if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
             {
                 focalLength = Mathf.Lerp(focalLength, rhit.distance, Time.deltaTime * focusSpeed);
-                line.SetPosition(0, transform.TransformPoint(offsetUP));
-                line.SetPosition(1, rhit.point);
+                //line.SetPosition(0, transform.TransformPoint(offsetUP));
+                //line.SetPosition(1, rhit.point);
             }
             else
             {
                 focalLength = Mathf.Lerp(focalLength, 2, Time.deltaTime * focusSpeed);
-                line.SetPosition(0, transform.TransformPoint(offsetUP));
-                line.SetPosition(1, cam.transform.forward * 100);
+                //line.SetPosition(0, transform.TransformPoint(offsetUP));
+                //line.SetPosition(1, cam.transform.forward * 100);
             }
         }
     }
@@ -162,23 +162,6 @@ public class DoF : MonoBehaviour
         int firstPass = 1;
         int lastPass = 0;
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "depth", depth);
-
-        //if (!FixedDepthofField)
-        //{
-        //    RaycastHit rhit;
-        //    if (Physics.Raycast(cam.transform.position, cam.transform.forward, out rhit, cam.farClipPlane))
-        //    {
-        //        focalLength = Mathf.Lerp(focalLength, rhit.distance, Time.deltaTime * focusSpeed);
-        //        line.SetPosition(0, transform.TransformPoint(offsetUP));
-        //        line.SetPosition(1, rhit.point);
-        //    }
-        //    else
-        //    {
-        //        focalLength = Mathf.Lerp(focalLength, 2, Time.deltaTime * focusSpeed);
-        //        line.SetPosition(0, transform.TransformPoint(offsetUP));
-        //        line.SetPosition(1, cam.transform.forward * 100);
-        //    }
-        //}
 
         frame.GetShader.SetInt("firstPass", firstPass);
         frame.GetShader.SetFloat("focalLength", focalLength);
