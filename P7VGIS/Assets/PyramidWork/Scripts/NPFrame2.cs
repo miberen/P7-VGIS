@@ -114,17 +114,16 @@ public class NPFrame2{
         set { _filterMode = value; }
     }
 
-<<<<<<< HEAD
     public static Dictionary<string, NPFrame2> MasterDic
     {
         get { return _masterDic; }
         set { _masterDic = value; }
-=======
+    }
+
     public RenderTextureFormat TextureFormat
     {
         get { return _textureFormat; }
         set { _textureFormat = value; }
->>>>>>> 0b7cf536c4e3b40c03eef15317534016a3b4f700
     }
 
     public enum AnalysisMode
