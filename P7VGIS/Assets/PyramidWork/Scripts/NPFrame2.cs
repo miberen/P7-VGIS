@@ -8,7 +8,7 @@ using System.Runtime.InteropServices.ComTypes;
 
 public class NPFrame2
 {
-
+    // Use nested class to allow for use of internal constructors not accessible from outside our framework
     public class Synthesis
     {
         private List<RenderTexture> _synths;
@@ -24,6 +24,9 @@ public class NPFrame2
             _synths = new List<RenderTexture>();
         }
 
+        /// <summary>
+        /// The analysation level this synthesis is generated from.
+        /// </summary>
         public int SourceLevel
         {
             get { return _analyzedFrom; }
@@ -35,11 +38,17 @@ public class NPFrame2
             get { return _synths[index]; }
         }
 
+        /// <summary>
+        /// Returns the amount of levels contained in this synthesis.
+        /// </summary>
         public int Count
         {
             get { return _synths.Count; }
         }
 
+        /// <summary>
+        /// The list of RenderTexures that makes up this synthesis pyramid.
+        /// </summary>
         public List<RenderTexture> Pyramid
         {
             get { return _synths; }
@@ -51,7 +60,9 @@ public class NPFrame2
     // Static to allow access in any script, lets user reuse the same pyramids again.
     private static Dictionary<string, NPFrame2> _masterDic = new Dictionary<string, NPFrame2>();
 
+    // Dictionary to hold all the synthesis pyramids of the analysis pyramid of this instance
     private Dictionary<string, Synthesis> _synthDic = new Dictionary<string, Synthesis>();
+    // Holds the analysis
     private List<RenderTexture> _analyzeList = new List<RenderTexture>();
     private List<int> _pow2S = new List<int>();
 
@@ -59,11 +70,14 @@ public class NPFrame2
     private bool _isInit;
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
+
+    // Options for how the analysis / synthesis should be done and also properties of the RenderTextures
     private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
     private SynthesisMode _synthesisMode = SynthesisMode.BiQuadBSpline;
     private FilterMode _filterMode = FilterMode.Bilinear;
     private RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
+    // TODO: implement these properly
     private RenderTexture _done;
     private RenderTexture _donePow2;
 
@@ -198,6 +212,7 @@ public class NPFrame2
         BiQuadBSpline
     };
 
+    // TODO: Make this work with different sizes
     /// <summary>
     /// Creates a NPOT texture from a POT texture, must be a 0
     /// </summary>
@@ -292,18 +307,22 @@ public class NPFrame2
     {
         if (CheckCompatibility())
         {
+            // Add this instance of the class to the static dictionary.
             _masterDic.Add(name, this);
+            // Load the compute shader.
             _cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
+            // Compute the list of POTs, used to determine what resolution texture to copy image into.
             GenPow2S();
         }
     }
 
     /// <summary>
-    /// 
+    /// Initializes the entire analysis pyramid. ( As well as done textures ATM ).
     /// </summary>
-    /// <param name="source"></param>
+    /// <param name="source">The source texture to be used for analysation</param>
     private void InitAnalyze(ref RenderTexture source)
     {
+        // Release previous textures if any
         foreach (RenderTexture rT in _analyzeList)
         {
             if (rT.IsCreated())
@@ -311,10 +330,12 @@ public class NPFrame2
                 rT.Release();
             }
         }
-
+        // Clear the list
         _analyzeList.Clear();
+        // Find the size for the first texture
         int size = NextPow2(new Vector2(source.width, source.height));
 
+        // Fill in list
         for (int i = 0; i < _levels; i++)
         {
             _analyzeList.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(size) - i], _pow2S[_pow2S.IndexOf(size) - i], 0, _textureFormat, RenderTextureReadWrite.Linear));
@@ -322,7 +343,8 @@ public class NPFrame2
             _analyzeList[i].filterMode = _filterMode;
             _analyzeList[i].Create();
         }
-
+        
+        // Init done textures 
         _donePow2 = new RenderTexture(size, size, 0, _textureFormat, RenderTextureReadWrite.Linear);
         _donePow2.enableRandomWrite = true;
         _donePow2.filterMode = _filterMode;
@@ -333,18 +355,24 @@ public class NPFrame2
         _done.filterMode = _filterMode;
         _done.Create();
 
+        // Set the last screen size to the new one and set init to true.
         _lastScreenSize = new Vector2(Screen.width, Screen.height);
         _isInit = true;
 
     }
 
+    /// <summary>
+    /// Create analysis pyramid in analysis list.
+    /// </summary>
     private void AnalyzeCall()
     {
         for (int i = 0; i < _levels - 1; i++)
         {
+            // Set the correct textures for the kernel
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "source", _analyzeList[i]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "dest", _analyzeList[i + 1]);
 
+            // Check if image is smaller than 32x32, if it is just run the kernel once, otherwise divide the image by 32 and use that number.
             if (_analyzeList[i].width > 32 || _analyzeList[i].width > 32)
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
             else
@@ -354,10 +382,18 @@ public class NPFrame2
         }
     }
 
+    /// <summary>
+    /// Create synthesis in specified synthesis object.
+    /// </summary>
+    /// <param name="synth">The syntesis object to work on.</param>
+    /// <param name="levels">How many levels to generate.</param>
+    /// <param name="synthMode">What kernel to use for synthesis.</param>
     private void SynthesizeCall(Synthesis synth, int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
+        // Use default value if no value is set ( To be changed later to just synthesize all the way up if nothing else is specific)
         if (levels == 0) levels = _levels;
 
+        // If it is the first level just copy over the top level analysis. (This could be optimized slightly by just directly using it from the analysis list)
         if (levels == 1)
         {
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
@@ -388,6 +424,11 @@ public class NPFrame2
         }
     }
 
+    /// <summary>
+    /// Finds the closest POT match for a specified resolution.
+    /// </summary>
+    /// <param name="resolution">The resolution to find a match for.</param>
+    /// <returns></returns>
     private int NextPow2(Vector2 resolution)
     {
         int biggest = (int)Mathf.Max(resolution.x, resolution.y);
@@ -428,6 +469,11 @@ public class NPFrame2
         return ret;
     }
 
+    /// <summary>
+    /// Gets the description of an enum.
+    /// </summary>
+    /// <param name="value">The enum to retrieve description from.</param>
+    /// <returns></returns>
     public static string GetEnumDescription(Enum value)
     {
         FieldInfo fi = value.GetType().GetField(value.ToString());
@@ -441,18 +487,24 @@ public class NPFrame2
             return value.ToString();
     }
 
-
+    /// <summary>
+    /// Checks if the system supports the correct shader model.
+    /// </summary>
+    /// <returns></returns>
     private bool CheckCompatibility()
     {
         if (!SystemInfo.supportsComputeShaders)
         {
             Debug.Log("Error: Compute Shaders not supported on this system. Requires Shader Model 50(DX11), Shader Model: " + SystemInfo.graphicsShaderLevel + " detected");
-            return !SystemInfo.supportsComputeShaders;
+            return SystemInfo.supportsComputeShaders;
         }
 
         return SystemInfo.supportsComputeShaders;
     }
 
+    /// <summary>
+    /// Generates a list of POTs for later usage.
+    /// </summary>
     private void GenPow2S()
     {
         for (int i = 1; i < 20 + 1; i++)
@@ -461,6 +513,11 @@ public class NPFrame2
         }
     }
 
+    /// <summary>
+    /// Turns a NPOT texture into a POT texture. 
+    /// </summary>
+    /// <param name="source">The NPOT texture.</param>
+    /// <param name="destination">The resulting POT texture.</param>
     private void MakePow2Call(ref RenderTexture source, ref List<RenderTexture> destination)
     {
         //Set the shader uniforms
@@ -471,6 +528,11 @@ public class NPFrame2
         _cSMain.Dispatch(_cSMain.FindKernel("MakePow2"), (int)Mathf.Ceil(destination[0].width / 32), (int)Mathf.Ceil(destination[0].height / 32), 1);
     }
 
+    /// <summary>
+    /// Turns POT texture into NPOT texture. (Must be nearest to screen res POT ATM)
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="destination"></param>
     private void MakeNonPow2Call(ref RenderTexture source, ref RenderTexture destination)
     {
         //Set the shader uniforms
