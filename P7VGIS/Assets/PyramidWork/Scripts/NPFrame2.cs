@@ -31,6 +31,10 @@ public class NPFrame2
         {
             get { return _analyzedFrom; }
         }
+        internal int SetSourceLevel
+        {
+            set { _analyzedFrom = value; }
+        }
 
         // Creates an indexer for the list on the class so you can access the list directly.
         public RenderTexture this[int index]
@@ -67,7 +71,8 @@ public class NPFrame2
     private List<int> _pow2S = new List<int>();
 
     private int _levels;
-    private bool _isInit;
+    private bool _analyseIsInit = false;
+    private bool _synthesiseIsInit = false;
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
 
@@ -236,12 +241,16 @@ public class NPFrame2
     public void Analyze(ref RenderTexture source)
     {
         // Checks if the analyze list is created or if the screen size has changed. If it has then reinit the list
-        if (!_isInit || _lastScreenSize != new Vector2(Screen.width, Screen.height)) InitAnalyze(ref source);
+        if (!_analyseIsInit || _lastScreenSize != new Vector2(Screen.width, Screen.height))
+        {
+            InitAnalyze(ref source);
+            _synthesiseIsInit = false;
+        }
 
         // Create the power of 2 texture.
         MakePow2Call(ref source, ref _analyzeList);
 
-        // Set the textures and dispatch the shader to create analysis pyramid.
+        // Set the textures and dispatch the shader to create analysis pyramid
         AnalyzeCall();
     }
 
@@ -250,6 +259,7 @@ public class NPFrame2
     /// </summary>
     /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
+    /// <param name="synthMode">The filter to use for synthesising.</param>
     public void GenerateSynthesis(int sourceLevel, string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
@@ -267,19 +277,21 @@ public class NPFrame2
                 _synthDic[name][i].Create();
             }
 
+            _synthesiseIsInit = true;
+
             SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
-        // If it does exist but the size is different, delete the old one and make a new one with the right size.
-        else if (_synthDic.ContainsKey(name) && sourceLevel != _synthDic[name].SourceLevel)
+        // If it does exist but the size is different or if the screen size has changed, delete the old one and make a new one with the right size.
+        else if (_synthDic.ContainsKey(name) && (sourceLevel != _synthDic[name].SourceLevel || !_synthesiseIsInit))
         {
             foreach (RenderTexture rT in _synthDic[name].Pyramid)
             {
                 if (rT.IsCreated())
                 {
                     rT.Release();
-                }
-                _synthDic[name].Pyramid.Clear();
+                }             
             }
+            _synthDic[name].Pyramid.Clear();
 
             for (int i = 0; i < sourceLevel; i++)
             {
@@ -288,6 +300,9 @@ public class NPFrame2
                 _synthDic[name][i].filterMode = _filterMode;
                 _synthDic[name][i].Create();
             }
+
+            _synthDic[name].SetSourceLevel = sourceLevel;
+            _synthesiseIsInit = true;
 
             SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
@@ -357,7 +372,7 @@ public class NPFrame2
 
         // Set the last screen size to the new one and set init to true.
         _lastScreenSize = new Vector2(Screen.width, Screen.height);
-        _isInit = true;
+        _analyseIsInit = true;
 
     }
 
