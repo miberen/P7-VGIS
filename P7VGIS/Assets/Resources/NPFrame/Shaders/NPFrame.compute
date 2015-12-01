@@ -12,14 +12,10 @@
 //#pragma kernel Infill
  
 // Declare functions
-float4 ApplyKernel(uint2 id, int kernelSize, int filterFactor);
-float4 ApplyKernel0_0(uint2 id);
-float4 ApplyKernel0_1(uint2 id);
-float4 ApplyKernel1_0(uint2 id);
-float4 ApplyKernel1_1(uint2 id);
+float4 ApplyKernel(uint2 id);
 int3 CnvRBGtoYCbCr(float4 RBGColor);
 float4 CnvYCbCrtoRBG(int3 YCbCr); 
-float4 ApplyBilinearLookup(float2 uv, float2 texelSize, int lookup);
+void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type);
 
 // Variables for changing billenear sampling mode
 SamplerState _LinearClamp;
@@ -74,34 +70,6 @@ float InterpolateValue(float value, float scale, float x, float y)
 	return 1-((value*scale - x) / (y-x));
 }
 
-// Kernels for synthesize function
-static float3x3 kernel0_0 =
-{	
-	0,0,0,
-	3,9,0,
-	1,3,0
-};
-
-static float3x3 kernel0_1 =
-{	
-	1,3,0,
-	3,9,0,
-	0,0,0
-};
-
-static float3x3 kernel1_0 =
-{	
-	0,0,0,
-	0,9,3,
-	0,3,1
-};
-
-static float3x3 kernel1_1 =
-{	
-	0,3,1,
-	0,9,3,
-	0,0,0
-};
 
 // Copies source into a new power of 2 destination texture, also pads the image with edge pixels
 [numthreads(32,32,1)]
@@ -138,7 +106,6 @@ void MakePow2 (uint2 id : SV_DispatchThreadID)
     else dest[id + offset] = source[id];
 
 }
-
 
 [numthreads(32, 32, 1)]
 void MakeNPow2 (uint2 id : SV_DispatchThreadID)
@@ -251,7 +218,6 @@ void DOF (uint2 id : SV_DispatchThreadID)
 void Blur (uint2 id : SV_DispatchThreadID)
 {
 	dest[id+offset] = source[id+offset];
-
 }
 
 [numthreads(32,32,1)]
@@ -316,27 +282,60 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 void ApplyCustom (uint2 id : SV_DispatchThreadID)
 {
 
-	dest[id + offset] = ApplyKernel(id, kernelSize, filterFactor);
+	dest[id + offset] = ApplyKernel(id);
 
 }
 
-float4 ApplyBilinearLookup(float2 uv, float2 texelSize, int lookup)
+void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type)
 {
+	[call] switch(type) 
+	{
+		case 0: 
+		{
+			dest[id] = (source.SampleLevel(_LinearClamp, float2(uv + texelSize / lookup), 0) +
+			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x / lookup, uv.y + texelSize.y / lookup), 0) +
+				source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x / lookup, uv.y + texelSize.y - texelSize.y / lookup), 0) + 
+				source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x / lookup, uv.y + texelSize.y - texelSize.y / lookup), 0)
+			   ) / 4;	
+		}
+		break;
 
-	return source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/4, uv.y + texelSize.y/4) , 0);
+		case 1: 
+		{
+			dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv + texelSize/lookup), 0);
+			dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/lookup, uv.y + texelSize.y/lookup) , 0);
+			dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x/lookup, uv.y + texelSize.y - texelSize.y/lookup), 0);
+			dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/lookup, uv.y + texelSize.y - texelSize.y/lookup), 0);
+		}
+		break;
 
+		case 2: 
+		{
+			dest[id] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/lookup, uv.y + texelSize.y/lookup) , 0);
+		}
+		break;
+
+		default : 
+		{
+		  dest[id] = float4(0.5, 0, 0.5, 1);
+		}
+		break;
+	}
 }
 
-float4 ApplyKernel(uint2 id, int kernelSize, int filterFactor)
+float4 ApplyKernel(uint2 id)
 {
 	float4 sum = 0;
+	int type = kernel[0];
+	int filterFactor = kernel[1];
+	int kernelSize = kernel[2];
 
-	[call] switch(kernelSize) 
+	[call] switch(type) 
 	{
 		case 0: 
 		{
 			int enumerator = asint(kernelSize/2);
-			int index = 0;
+			int index = 3;
 			for(int i = -enumerator+1; i <= enumerator+1; i++)
 			{
 				for(int j = -enumerator+1; j <= enumerator+1; j++)
@@ -353,7 +352,7 @@ float4 ApplyKernel(uint2 id, int kernelSize, int filterFactor)
 		 case 1: 
 		 {
 			int enumerator = asint(kernelSize/2);
-			int index = 0;
+			int index = 3;
 			for(int i = -enumerator; i <= enumerator; i++)
 			{
 				for(int j = -enumerator; j <= enumerator; j++)
@@ -373,54 +372,6 @@ float4 ApplyKernel(uint2 id, int kernelSize, int filterFactor)
 		 }
 		 break;
 	}
-}
-
-float4 ApplyKernel0_0(uint2 id)
-{
-	float4 sum = 0;
-
-	sum += source[id + int2(-1.0,-1.0)] * 1;
-	sum += source[id + int2(0.0 ,-1.0)] * 3;
-	sum += source[id + int2(-1.0, 0.0)] * 3;
-	sum += source[id + int2( 0.0, 0.0)] * 9;
-
-	return sum/16;
-}
-
-float4 ApplyKernel0_1(uint2 id)
-{
-	float4 sum = 0;
- 
-	sum += source[id + int2( 0.0, 0.0)] * 9;
-	sum += source[id + int2( -1.0, 0.0)] * 3;
-	sum += source[id + int2( 0.0, 1.0)] * 3;
-	sum += source[id + int2( -1.0, -1.0)] * 1;
-
-	return sum/16;
-}
-
-float4 ApplyKernel1_0(uint2 id)
-{
-	float4 sum = 0;
-
-	sum += source[id + int2( 0.0, 0.0)] * 9;
-	sum += source[id + int2( 1.0, 0.0)] * 3;
-	sum += source[id + int2( 0.0, -1.0)] * 3;
-	sum += source[id + int2( 1.0, -1.0)] * 1;
-	
-	return sum/16;
-}
-
-float4 ApplyKernel1_1(uint2 id)
-{
-	float4 sum = 0;
-
-	sum += source[id + int2(0.0 ,1.0)] * 3;
-	sum += source[id + int2(1.0, 1.0)] * 1;
-	sum += source[id + int2( 0.0, 0.0)] * 9;
-	sum += source[id + int2( 1.0, 0.0)] * 3;
-
-	return sum/16;
 }
 
  int3 CnvRBGtoYCbCr(float4 RBGColor) 

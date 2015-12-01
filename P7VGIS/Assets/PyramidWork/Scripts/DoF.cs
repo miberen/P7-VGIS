@@ -146,7 +146,7 @@ public class DoF : MonoBehaviour
             }
             else
             {
-            //    focalLength = Mathf.Lerp(focalLength, 2, Time.deltaTime * focusSpeed);
+                   focalLength = Mathf.Lerp(focalLength, 2, Time.deltaTime * focusSpeed);
             //    line.SetPosition(0, transform.TransformPoint(offsetUP));
             //    line.SetPosition(1, cam.transform.forward * 100);
            }
