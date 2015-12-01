@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
 
@@ -576,8 +577,11 @@ public class NPFrame2
         // Find out if its an equal or non-equal kernel.
         newArray[0] = kernel.Length % 2;
         Debug.Log("Mod operation: " + kernel.Length % 2);
-        // Put in the filter factor.
-        newArray[1] = filterFactor;
+        // Put in the filter factor. If default use the sum of the kernel, otherwise use specified filterFactor.
+        if (filterFactor == 0)
+            newArray[1] = kernel.Sum();
+        else
+            newArray[1] = filterFactor;
         // Lenght of the kernel
         newArray[2] = kernel.Length;
         // Copy in the kernel to the new array
