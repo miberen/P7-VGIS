@@ -8,16 +8,18 @@
 #pragma kernel DOF
 #pragma kernel Blur
 #pragma kernel HistogramEq
+#pragma kernel ApplyCustom
 //#pragma kernel Infill
  
 // Declare functions
-float4 ApplyKernel(uint2 id, float3x3 kernel);
+float4 ApplyKernel(uint2 id, int kernelSize, int filterFactor);
 float4 ApplyKernel0_0(uint2 id);
 float4 ApplyKernel0_1(uint2 id);
 float4 ApplyKernel1_0(uint2 id);
 float4 ApplyKernel1_1(uint2 id);
 int3 CnvRBGtoYCbCr(float4 RBGColor);
 float4 CnvYCbCrtoRBG(int3 YCbCr); 
+float4 ApplyBilinearLookup(float2 uv, float2 texelSize, int lookup);
 
 // Variables for changing billenear sampling mode
 SamplerState _LinearClamp;
@@ -41,7 +43,11 @@ int lastPass;
 float4 blurPlanes;
 Texture2D<float4> DOF0;
 Texture2D<float4> DOF1;
-int debug;
+
+// Uniforms for applying custom kernel;
+uniform StructuredBuffer<int> kernel;
+int kernelSize;
+int filterFactor;
 
 // Uniforms for infill effect
 int isRange;
@@ -190,23 +196,6 @@ void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 			   ) / 4;
 }
 
-
-
-//[numthreads(32,32,1)]
-//void Synthesize2x2Box (uint2 id : SV_DispatchThreadID)
-//{	
-//    uint sW, sH;
-//    source.GetDimensions(sW, sH);
-//	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
-//	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
-//	float2 texelSize = float2((float)1/sW, (float)1/sH);
-
-//	dest[2*id+uint2(0.0, 0.0)] = source.SampleLevel(_LinearClamp, uv, 0);
-//	dest[2*id+uint2(1.0, 0.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y) , 0);
-//	dest[2*id+uint2(0.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0);
-//	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0);
-//}
-
 [numthreads(32,32,1)]
 void SynthesizeBQBS (uint2 id : SV_DispatchThreadID)
 {	
@@ -268,8 +257,6 @@ void Blur (uint2 id : SV_DispatchThreadID)
 [numthreads(32,32,1)]
 void HistogramEq(uint2 id : SV_DispatchThreadID)
 {
-
-
 		 uint sW, sH;
 		 source.GetDimensions(sW, sH);
 		 int histogram[256];
@@ -312,41 +299,80 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 	 }
 	
 }
+
 //[numthreads(32,32,1)]
-//void Infill (uint2 id : SV_DispatchThreadID, uint id1D : SV_GroupIndex)
+//void Infill (uint2 id : SV_DispatchThreadID)
 //{	
 //	uint sW, sH;
 //    source.GetDimensions(sW, sH);
 //	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 //	float2 texelSize = float2((float)1/sW, (float)1/sH);
-//	float4 compare = dest.Load(id1D);
-//	if(isRange == 1)
-//	{
-//		//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
-//		dest[id] = float4(1,0,0,1);
-//	}
-//	else if(compare.x == infillColor.x && compare.y == infillColor.y && compare.z == infillColor.z)
-//	{	
-//		dest[id] = float4(1,0,0,1);
-//		//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
-//	}
+	
+//	dest[id + offset] = source.SampleLevel(_PointClamp, uv, 0)
+
 //}
 
-float4 ApplyKernel(uint2 id, float3x3 kernel)
+[numthreads(32,32,1)]
+void ApplyCustom (uint2 id : SV_DispatchThreadID)
+{
+
+	dest[id + offset] = ApplyKernel(id, kernelSize, filterFactor);
+
+}
+
+float4 ApplyBilinearLookup(float2 uv, float2 texelSize, int lookup)
+{
+
+	return source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/4, uv.y + texelSize.y/4) , 0);
+
+}
+
+float4 ApplyKernel(uint2 id, int kernelSize, int filterFactor)
 {
 	float4 sum = 0;
 
-	sum += source[id + int2(-1.0,-1.0)] * kernel[2][0];
-	sum += source[id + int2(0.0 ,-1.0)] * kernel[2][1];
-	sum += source[id + int2(1.0, -1.0)] * kernel[2][2];
-	sum += source[id + int2(-1.0, 0.0)] * kernel[1][0];
-	sum += source[id + int2( 0.0, 0.0)] * kernel[1][1];
-	sum += source[id + int2( 1.0, 0.0)] * kernel[1][2];
-	sum += source[id + int2(-1.0, 1.0)] * kernel[0][0];
-	sum += source[id + int2( 0.0, 1.0)] * kernel[0][1];
-	sum += source[id + int2( 1.0, 1.0)] * kernel[0][2];
+	[call] switch(kernelSize) 
+	{
+		case 0: 
+		{
+			int enumerator = asint(kernelSize/2);
+			int index = 0;
+			for(int i = -enumerator+1; i <= enumerator+1; i++)
+			{
+				for(int j = -enumerator+1; j <= enumerator+1; j++)
+				{
+					sum += source[id + int2(j, i)] * kernel[index];
+					index++;
+				}
+			}
+			sum = sum/filterFactor;
+			return sum;
+		 }
+		 break;
 
-	return sum/16;
+		 case 1: 
+		 {
+			int enumerator = asint(kernelSize/2);
+			int index = 0;
+			for(int i = -enumerator; i <= enumerator; i++)
+			{
+				for(int j = -enumerator; j <= enumerator; j++)
+				{
+					sum += source[id + int2(j, i)] * kernel[index];
+					index++;
+				}
+			}
+			sum = sum/filterFactor;
+			return sum;
+		 }
+		 break;
+
+		 default : 
+		 {
+		   return float4(0.5, 0, 0.5, 1);
+		 }
+		 break;
+	}
 }
 
 float4 ApplyKernel0_0(uint2 id)
@@ -357,7 +383,6 @@ float4 ApplyKernel0_0(uint2 id)
 	sum += source[id + int2(0.0 ,-1.0)] * 3;
 	sum += source[id + int2(-1.0, 0.0)] * 3;
 	sum += source[id + int2( 0.0, 0.0)] * 9;
-
 
 	return sum/16;
 }
