@@ -377,69 +377,6 @@ public class NPFrame2
     }
 
     /// <summary>
-    /// Create analysis pyramid in analysis list.
-    /// </summary>
-    private void AnalyzeCall()
-    {
-        for (int i = 0; i < _levels - 1; i++)
-        {
-            // Set the correct textures for the kernel
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "source", _analyzeList[i]);
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "dest", _analyzeList[i + 1]);
-
-            // Check if image is smaller than 32x32, if it is just run the kernel once, otherwise divide the image by 32 and use that number.
-            if (_analyzeList[i].width > 32 || _analyzeList[i].width > 32)
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
-            else
-            {
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), 1, 1, 1);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Create synthesis in specified synthesis object.
-    /// </summary>
-    /// <param name="synth">The syntesis object to work on.</param>
-    /// <param name="levels">How many levels to generate.</param>
-    /// <param name="synthMode">What kernel to use for synthesis.</param>
-    private void SynthesizeCall(Synthesis synth, int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
-    {
-        // Use default value if no value is set ( To be changed later to just synthesize all the way up if nothing else is specific)
-        if (levels == 0) levels = _levels;
-
-        // If it is the first level just copy over the top level analysis. (This could be optimized slightly by just directly using it from the analysis list)
-        if (levels == 1)
-        {
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[0]);
-
-            if (synth.Pyramid[0].width > 32 || synth.Pyramid[0].width > 32)
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[0].width / 32), (int)Mathf.Ceil(synth.Pyramid[0].height / 32), 1);
-            else
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
-        }
-
-        for (int i = 0; i < levels - 1; i++)
-        {
-            if (i == 0)
-            {
-                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
-                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i]);
-
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
-            }
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
-
-            if (synth.Pyramid[i].width > 32 || synth.Pyramid[i].width > 32)
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
-            else
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
-        }
-    }
-
-    /// <summary>
     /// Finds the closest POT match for a specified resolution.
     /// </summary>
     /// <param name="resolution">The resolution to find a match for.</param>
@@ -557,4 +494,115 @@ public class NPFrame2
         //Dispatch the compute shader
         _cSMain.Dispatch(_cSMain.FindKernel("MakeNPow2"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
     }
+
+    /// <summary>
+    /// Create analysis pyramid in analysis list.
+    /// </summary>
+    private void AnalyzeCall()
+    {
+        for (int i = 0; i < _levels - 1; i++)
+        {
+            // Set the correct textures for the kernel
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "source", _analyzeList[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "dest", _analyzeList[i + 1]);
+
+            // Check if image is smaller than 32x32, if it is just run the kernel once, otherwise divide the image by 32 and use that number.
+            if (_analyzeList[i].width > 32 || _analyzeList[i].width > 32)
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
+            else
+            {
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), 1, 1, 1);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Create synthesis in specified synthesis object.
+    /// </summary>
+    /// <param name="synth">The syntesis object to work on.</param>
+    /// <param name="levels">How many levels to generate.</param>
+    /// <param name="synthMode">What kernel to use for synthesis.</param>
+    private void SynthesizeCall(Synthesis synth, int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
+    {
+        // Use default value if no value is set ( To be changed later to just synthesize all the way up if nothing else is specific)
+        if (levels == 0) levels = _levels;
+
+        // If it is the first level just copy over the top level analysis. (This could be optimized slightly by just directly using it from the analysis list)
+        if (levels == 1)
+        {
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[0]);
+
+            if (synth.Pyramid[0].width > 32 || synth.Pyramid[0].width > 32)
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[0].width / 32), (int)Mathf.Ceil(synth.Pyramid[0].height / 32), 1);
+            else
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
+        }
+
+        for (int i = 0; i < levels - 1; i++)
+        {
+            if (i == 0)
+            {
+                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
+                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i]);
+
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+            }
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
+
+            if (synth.Pyramid[i].width > 32 || synth.Pyramid[i].width > 32)
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
+            else
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
+        }
+    }
+
+    /// <summary>
+    /// Applies a custom kernel to an image.
+    /// </summary>
+    /// <param name="source">The texture to apply the kernel to.</param>
+    /// <param name="destination">The texture to contain the result of the kernel operation.</param>
+    /// <param name="kernel">The kernel to apply. ( Must be n x n size, 1D represented as row by row, bottom to top. )</param>
+    /// <param name="filterFactor">The amount to divide the result of the kernel operation with. ( if left empty, will assume division by sum. )</param>
+    public void ApplyCustomKernel(RenderTexture source, RenderTexture destination, int[] kernel, int filterFactor = 0)
+    {
+        // Declares a compute buffer to hold the kernel and other needed parameters. Its the size of the array
+        // plus 3 other variables, the strie is the size of an int and its a standard structured buffer. 
+        ComputeBuffer buf = new ComputeBuffer(kernel.Length + 3,sizeof(int), ComputeBufferType.Default);
+
+        // Create a new array and put in all the needed variables.
+        int[] newArray = new int[kernel.Length + 3];
+        // Find out if its an equal or non-equal kernel.
+        newArray[0] = kernel.Length % 2;
+        Debug.Log("Mod operation: " + kernel.Length % 2);
+        // Put in the filter factor.
+        newArray[1] = filterFactor;
+        // Lenght of the kernel
+        newArray[2] = kernel.Length;
+        // Copy in the kernel to the new array
+        Array.Copy(kernel, 0, newArray, 3, kernel.Length);
+
+        // Put the new array into the buffer.
+        buf.SetData(newArray);
+
+        // Call the compute shader function with the needed parameters.
+        CustomKernelCall(source, destination, buf);
+    }
+
+    /// <summary>
+    /// Actually calls the compute shader to apply the kernel.
+    /// </summary>
+    /// <param name="buf">The buffer containing kernel and other parameters. </param>
+    /// <param name="source">Source texture.</param>
+    /// <param name="destination">Destination texture.</param>
+    private void CustomKernelCall(RenderTexture source, RenderTexture destination, ComputeBuffer buf)
+    {
+        _cSMain.SetTexture(_cSMain.FindKernel("ApplyCustom"), "source", source);
+        _cSMain.SetTexture(_cSMain.FindKernel("ApplyCustom"), "dest", destination);
+        _cSMain.SetBuffer(_cSMain.FindKernel("ApplyCustom"), "kernel", buf);
+
+        _cSMain.Dispatch(_cSMain.FindKernel("ApplyCustom"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
+    }
+        
 }
