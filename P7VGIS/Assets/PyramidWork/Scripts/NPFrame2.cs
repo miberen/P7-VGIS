@@ -566,7 +566,7 @@ public class NPFrame2
     /// <param name="destination">The texture to contain the result of the kernel operation.</param>
     /// <param name="kernel">The kernel to apply. ( Must be n x n size, 1D represented as row by row, bottom to top. )</param>
     /// <param name="filterFactor">The amount to divide the result of the kernel operation with. ( if left empty, will assume division by sum. )</param>
-    public void ApplyCustomKernel(RenderTexture source, RenderTexture destination, int[] kernel, int filterFactor = 0)
+    public void ApplyCustomKernel(RenderTexture source, RenderTexture destination, int[] kernel, int filterFactor = -1)
     {
         // Declares a compute buffer to hold the kernel and other needed parameters. Its the size of the array
         // plus 3 other variables, the strie is the size of an int and its a standard structured buffer. 
@@ -578,7 +578,7 @@ public class NPFrame2
         newArray[0] = kernel.Length % 2;
         Debug.Log("Mod operation: " + kernel.Length % 2);
         // Put in the filter factor. If default use the sum of the kernel, otherwise use specified filterFactor.
-        if (filterFactor == 0)
+        if (filterFactor == -1)
             newArray[1] = kernel.Sum();
         else
             newArray[1] = filterFactor;
