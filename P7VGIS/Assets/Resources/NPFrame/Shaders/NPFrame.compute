@@ -3,7 +3,6 @@
 #pragma kernel Analyze2x2Box
 #pragma kernel Analyze4x4Box
 #pragma kernel AnalyzeBQBS
-//#pragma kernel Synthesize2x2Box
 #pragma kernel SynthesizeBQBS
 #pragma kernel DOF
 #pragma kernel Blur
