@@ -120,9 +120,9 @@ public class NPFrame2
     /// <param name="name">The name used to access this framework in the MasterList.</param>
     /// <param name="analyzeRes">The target resolution of the analysis.</param>
     public NPFrame2(string name, Vector2 analyzeRes)
-    {
-        _levels = LevelFromRes(analyzeRes);
+    {  
         BasicInit(name);
+        _levels = LevelFromRes(analyzeRes);
     }
 
     #endregion
@@ -395,6 +395,41 @@ public class NPFrame2
     }
 
     /// <summary>
+    /// Applies a custom kernel to an image.
+    /// </summary>
+    /// <param name="source">The texture to apply the kernel to.</param>
+    /// <param name="destination">The texture to contain the result of the kernel operation.</param>
+    /// <param name="kernel">The kernel to apply. ( Must be n x n size, 1D represented as row by row, bottom to top. )</param>
+    /// <param name="filterFactor">The amount to divide the result of the kernel operation with. ( if left empty, will assume division by sum. )</param>
+    public void ApplyCustomKernel(RenderTexture source, RenderTexture destination, int[] kernel, int filterFactor = -1)
+    {
+        // Declares a compute buffer to hold the kernel and other needed parameters. Its the size of the array
+        // plus 3 other variables, the strie is the size of an int and its a standard structured buffer. 
+        ComputeBuffer buf = new ComputeBuffer(kernel.Length + 3, sizeof(int), ComputeBufferType.Default);
+
+        // Create a new array and put in all the needed variables.
+        int[] newArray = new int[kernel.Length + 3];
+        // Find out if its an equal or non-equal kernel.
+        newArray[0] = kernel.Length % 2;
+        Debug.Log("Mod operation: " + kernel.Length % 2);
+        // Put in the filter factor. If default use the sum of the kernel, otherwise use specified filterFactor.
+        if (filterFactor == -1)
+            newArray[1] = kernel.Sum();
+        else
+            newArray[1] = filterFactor;
+        // Lenght of the kernel
+        newArray[2] = kernel.Length;
+        // Copy in the kernel to the new array
+        Array.Copy(kernel, 0, newArray, 3, kernel.Length);
+
+        // Put the new array into the buffer.
+        buf.SetData(newArray);
+
+        // Call the compute shader function with the needed parameters.
+        CustomKernelCall(source, destination, buf);
+    }
+
+    /// <summary>
     /// Calculates the non-zero based index / level of a specified resolution in the analysis pyramid.
     /// </summary>
     /// <param name="res">The resolution to find the corresponding level of.</param>
@@ -560,41 +595,6 @@ public class NPFrame2
     }
 
     /// <summary>
-    /// Applies a custom kernel to an image.
-    /// </summary>
-    /// <param name="source">The texture to apply the kernel to.</param>
-    /// <param name="destination">The texture to contain the result of the kernel operation.</param>
-    /// <param name="kernel">The kernel to apply. ( Must be n x n size, 1D represented as row by row, bottom to top. )</param>
-    /// <param name="filterFactor">The amount to divide the result of the kernel operation with. ( if left empty, will assume division by sum. )</param>
-    public void ApplyCustomKernel(RenderTexture source, RenderTexture destination, int[] kernel, int filterFactor = -1)
-    {
-        // Declares a compute buffer to hold the kernel and other needed parameters. Its the size of the array
-        // plus 3 other variables, the strie is the size of an int and its a standard structured buffer. 
-        ComputeBuffer buf = new ComputeBuffer(kernel.Length + 3,sizeof(int), ComputeBufferType.Default);
-
-        // Create a new array and put in all the needed variables.
-        int[] newArray = new int[kernel.Length + 3];
-        // Find out if its an equal or non-equal kernel.
-        newArray[0] = kernel.Length % 2;
-        Debug.Log("Mod operation: " + kernel.Length % 2);
-        // Put in the filter factor. If default use the sum of the kernel, otherwise use specified filterFactor.
-        if (filterFactor == -1)
-            newArray[1] = kernel.Sum();
-        else
-            newArray[1] = filterFactor;
-        // Lenght of the kernel
-        newArray[2] = kernel.Length;
-        // Copy in the kernel to the new array
-        Array.Copy(kernel, 0, newArray, 3, kernel.Length);
-
-        // Put the new array into the buffer.
-        buf.SetData(newArray);
-
-        // Call the compute shader function with the needed parameters.
-        CustomKernelCall(source, destination, buf);
-    }
-
-    /// <summary>
     /// Actually calls the compute shader to apply the kernel.
     /// </summary>
     /// <param name="buf">The buffer containing kernel and other parameters. </param>
@@ -606,7 +606,7 @@ public class NPFrame2
         _cSMain.SetTexture(_cSMain.FindKernel("ApplyCustom"), "dest", destination);
         _cSMain.SetBuffer(_cSMain.FindKernel("ApplyCustom"), "kernel", buf);
 
-        _cSMain.Dispatch(_cSMain.FindKernel("ApplyCustom"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
+        _cSMain.Dispatch(_cSMain.FindKernel("ApplyCustom"), (int)Mathf.Ceil(source.width / 32 +1), (int)Mathf.Ceil(source.height / 32 + 1), 1);
     }
         
 }
