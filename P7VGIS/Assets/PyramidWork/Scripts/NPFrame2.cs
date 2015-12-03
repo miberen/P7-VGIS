@@ -405,13 +405,13 @@ public class NPFrame2
     {
         // Declares a compute buffer to hold the kernel and other needed parameters. Its the size of the array
         // plus 3 other variables, the strie is the size of an int and its a standard structured buffer. 
+        
         ComputeBuffer buf = new ComputeBuffer(kernel.Length + 3, sizeof(int), ComputeBufferType.Default);
 
         // Create a new array and put in all the needed variables.
         int[] newArray = new int[kernel.Length + 3];
         // Find out if its an equal or non-equal kernel.
         newArray[0] = kernel.Length % 2;
-        Debug.Log("Mod operation: " + kernel.Length % 2);
         // Put in the filter factor. If default use the sum of the kernel, otherwise use specified filterFactor.
         if (filterFactor == -1)
             newArray[1] = kernel.Sum();
@@ -427,6 +427,8 @@ public class NPFrame2
 
         // Call the compute shader function with the needed parameters.
         CustomKernelCall(source, destination, buf);
+        // Discard the compute buffer to avoid memleak
+        buf.Dispose();
     }
 
     /// <summary>
