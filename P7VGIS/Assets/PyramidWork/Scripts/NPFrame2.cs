@@ -254,14 +254,14 @@ public class NPFrame2
         // Set the textures and dispatch the shader to create analysis pyramid
         AnalyzeCall();
     }
-
+    // TODO: Fix default level, make it work with arbitrary images.
     /// <summary>
     /// Generates a synthesis from a specified non-zero based source level of the analyzation pyramid.
     /// </summary>
     /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
     /// <param name="synthMode">The filter to use for synthesising.</param>
-    public void GenerateSynthesis(int sourceLevel, string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
+    public void GenerateSynthesis(string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline, int sourceLevel = 0)
     {
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
@@ -324,7 +324,15 @@ public class NPFrame2
         if (CheckCompatibility())
         {
             // Add this instance of the class to the static dictionary.
-            _masterDic.Add(name, this);
+            try
+            {
+                _masterDic.Add(name, this);
+            }
+            catch (Exception e)
+            {              
+                Debug.Log(e);
+            }
+            
             // Load the compute shader.
             _cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
             // Compute the list of POTs, used to determine what resolution texture to copy image into.
@@ -431,6 +439,7 @@ public class NPFrame2
         buf.Dispose();
     }
 
+    // TODO: Make it work with x and y
     /// <summary>
     /// Calculates the non-zero based index / level of a specified resolution in the analysis pyramid.
     /// </summary>
@@ -438,25 +447,25 @@ public class NPFrame2
     /// <returns></returns>
     private int LevelFromRes(Vector2 res)
     {
-        int ret = -1;
-        if (_analyzeList.Count != 0)
+        if (Screen.width > res.x && Screen.height > res.y)
         {
-            foreach (RenderTexture rT in _analyzeList)
+            if (_pow2S.Contains((int) res.x))
             {
-                if (res.x == rT.width && res.y == rT.height) ret = _analyzeList.IndexOf(rT);
+                Debug.Log(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height))));
+                Debug.Log(_pow2S.IndexOf((int)res.x));
+                return 1 + _pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height))) - _pow2S.IndexOf((int)res.x);
             }
-            if (ret == -1)
+            else
             {
-                Debug.Log("Analyze list does not contain specified resolution.");
-                return ret;
+                Debug.Log("U dun goofed: Specified resolution does not exist in list, must be power of 2.");
+                return 1;
             }
         }
         else
         {
-            Debug.Log("Analyze list is empty, cannot calculate level from given resolution.");
-            return ret;
+            Debug.Log("U dun goofed: Specified resolution must be smaller than screen size.");
+            return 1;
         }
-        return ret;
     }
 
     /// <summary>
@@ -504,7 +513,7 @@ public class NPFrame2
     }
 
     /// <summary>
-    /// Turns a NPOT texture into a POT texture. 
+    /// Turns a NPOT texture into a POT texture by clamping. 
     /// </summary>
     /// <param name="source">The NPOT texture.</param>
     /// <param name="destination">The resulting POT texture.</param>
@@ -545,7 +554,7 @@ public class NPFrame2
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), "dest", _analyzeList[i + 1]);
 
             // Check if image is smaller than 32x32, if it is just run the kernel once, otherwise divide the image by 32 and use that number.
-            if (_analyzeList[i].width > 32 || _analyzeList[i].width > 32)
+            if (_analyzeList[i].width > 32 || _analyzeList[i].height > 32)
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(_analysisMode)), (int)Mathf.Ceil(_analyzeList[i + 1].width / 32), (int)Mathf.Ceil(_analyzeList[i + 1].height / 32), 1);
             else
             {
@@ -558,7 +567,7 @@ public class NPFrame2
     /// Create synthesis in specified synthesis object.
     /// </summary>
     /// <param name="synth">The syntesis object to work on.</param>
-    /// <param name="levels">How many levels to generate.</param>
+    /// <param name="levels">From what level to generate the synthesis from.</param>
     /// <param name="synthMode">What kernel to use for synthesis.</param>
     private void SynthesizeCall(Synthesis synth, int levels = 0, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
     {
@@ -571,7 +580,7 @@ public class NPFrame2
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[0]);
 
-            if (synth.Pyramid[0].width > 32 || synth.Pyramid[0].width > 32)
+            if (synth.Pyramid[0].width > 32 || synth.Pyramid[0].height > 32)
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[0].width / 32), (int)Mathf.Ceil(synth.Pyramid[0].height / 32), 1);
             else
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
@@ -589,7 +598,7 @@ public class NPFrame2
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
 
-            if (synth.Pyramid[i].width > 32 || synth.Pyramid[i].width > 32)
+            if (synth.Pyramid[i].width > 32 || synth.Pyramid[i].height > 32)
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
             else
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);

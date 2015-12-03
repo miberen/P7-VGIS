@@ -10,10 +10,12 @@ public class TestImplement : MonoBehaviour
     public List<RenderTexture> synthg;
 
     private NPFrame2 frame;
+    private NPFrame2 frame2;
 	// Use this for initialization
     void Awake()
     {
-        frame = new NPFrame2("main", 9);
+        frame = new NPFrame2("main", 3);
+        frame2 = new NPFrame2("main2", new Vector2(512,512));
     }
 
     void Start()
@@ -22,15 +24,9 @@ public class TestImplement : MonoBehaviour
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
+    {   
         frame.Analyze(ref source);
-        frame.GenerateSynthesis(2, "main");
-        frame.GenerateSynthesis(3, "gay");
-
-        anal = frame.AnalyzeList;
-        synth = frame.GetSynthesis("main").Pyramid;
-        synthg = frame.GetSynthesis("gay").Pyramid;
-        //Graphics.Blit(derp.GetTex(derp.Count-1), destination);
+        frame2.Analyze(ref source);
         Graphics.Blit(source, destination);
     }
 	// Update is called once per frame
