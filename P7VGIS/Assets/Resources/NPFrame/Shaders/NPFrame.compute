@@ -60,7 +60,7 @@ float Remap(float value, float from1, float to1, float from2, float to2)
 
 float4 Lerp(float factor, float4 a, float4 b)
 {
-	return float4(factor * a.r + (1.0 - factor) * b.r, factor * a.g + (1.0 - factor) * b.g, factor * a.b + (1.0 - factor) * b.b, 1.0);
+	return float4(factor * a.r + (1.0 - factor) * b.r, factor * a.g + (1.0 - factor) * b.g, factor * a.b + (1.0 - factor) * b.b, factor * a.a + (1.0 - factor) * b.a);
 }
 
 float InterpolateValue(float value, float scale, float x, float y)
@@ -268,26 +268,26 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 void Bloom (uint2 id : SV_DispatchThreadID)
 {	
 	uint sW, sH;
-    source.GetDimensions(sW, sH);
+    dest.GetDimensions(sW, sH);
 	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 	
 	if(firstPass == 1)
 	{
-		int3 ycbcrcolor = CnvRGBtoYCbCr(source.SampleLevel(_PointClamp, uv, 0));
+		uint3 ycbcrcolor = CnvRGBtoYCbCr(source.SampleLevel(_LinearClamp, uv, 0));
 	
 		if(ycbcrcolor.x > bloomValue)
-			dest[id + offset] = source.SampleLevel(_PointClamp, uv, 0);
-		else
-			dest[id + offset] = float4(0, 0, 0, 1);
+			dest[id] = source.SampleLevel(_PointClamp, uv, 0);
+		else 
+			dest[id] = float4(0, 0, 0, 0);
 	}
 
 	if(firstPass == 0)
 	{
-		if(!(bloom.SampleLevel(_PointClamp, uv, 0).x == 0 && bloom.SampleLevel(_PointClamp, uv, 0).y == 0 && bloom.SampleLevel(_PointClamp, uv, 0).z == 0))
-			dest[id+offset] = Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
+		if(!(bloom.SampleLevel(_PointClamp, uv, 0).w == 0))
+			dest[id] = bloom.SampleLevel(_PointClamp, uv, 0) + source.SampleLevel(_LinearClamp, uv, 0); //Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
 		else
-			dest[id+offset] = source.SampleLevel(_PointClamp, uv, 0);
+			dest[id] = source.SampleLevel(_PointClamp, uv, 0);
 	}
 }
 
@@ -393,7 +393,7 @@ float4 ApplyKernel(uint2 id)
 	int cb;
 	int cr;
 
-	y = (RBGColor.r * 256 * 0.229 ) + (RBGColor.g * 256 * 0.587) + (RBGColor.b * 256 * 0.114);
+	y = ((RBGColor.r * 0.229 ) + (RBGColor.g * 0.587) + (RBGColor.b * 0.114)) * 256;
 	cb = 128 + (-0.169 * RBGColor.r * 256) + (-0.331 * RBGColor.g * 256) + (0.5 * RBGColor.b * 256);
 	cr = 128 + (0.5* RBGColor.r * 256) + (-0.419 * RBGColor.g * 256) + (-0.081 * RBGColor.b * 256);
 
