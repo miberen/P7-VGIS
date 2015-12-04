@@ -8,12 +8,12 @@
 #pragma kernel Blur
 #pragma kernel HistogramEq
 #pragma kernel ApplyCustom
-//#pragma kernel Infill
+#pragma kernel Bloom
  
 // Declare functions
 float4 ApplyKernel(uint2 id);
-int3 CnvRBGtoYCbCr(float4 RBGColor);
-float4 CnvYCbCrtoRBG(int3 YCbCr); 
+int3 CnvRGBtoYCbCr(float4 RBGColor);
+float4 CnvYCbCrtoRGB(int3 YCbCr); 
 void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type);
 
 // Variables for changing billenear sampling mode
@@ -44,11 +44,10 @@ uniform StructuredBuffer<int> kernel;
 int kernelSize;
 int filterFactor;
 
-// Uniforms for infill effect
-int isRange;
-float4 infillColor;
-float4 infillLowRange;
-float4 infillHighRange;
+// Uniforms for bloom effect
+Texture2D<float4> bloom;
+uint bloomValue;
+float bloomStrength;
 
 // Offset to stop bleeding
 static uint2 offset = uint2(64, 64);
@@ -236,7 +235,7 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 		histogram[i] = 0;
 		}
 
-		 histogram[CnvRBGtoYCbCr(source[id]).x] += 1; // histogram[CnvRBGtoYCbCr(source[id]).x] + 1;
+		 histogram[CnvRGBtoYCbCr(source[id]).x] += 1; // histogram[CnvRGBtoYCbCr(source[id]).x] + 1;
 
 		 cumHistogram[0] = histogram[0];
 		
@@ -258,24 +257,39 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 	 }
 	
 	if(firstPass == 0){
-		int3 oldYCbCrvalue = CnvRBGtoYCbCr(source[id]);
+		int3 oldYCbCrvalue = CnvRGBtoYCbCr(source[id]);
 		int3 newYCbCrvalue = int3(lut[oldYCbCrvalue.x], oldYCbCrvalue.y, oldYCbCrvalue.z);
-		dest[id] = CnvYCbCrtoRBG(newYCbCrvalue);
+		dest[id] = CnvYCbCrtoRGB(newYCbCrvalue);
 	 }
 	
 }
 
-//[numthreads(32,32,1)]
-//void Infill (uint2 id : SV_DispatchThreadID)
-//{	
-//	uint sW, sH;
-//    source.GetDimensions(sW, sH);
-//	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
-//	float2 texelSize = float2((float)1/sW, (float)1/sH);
+[numthreads(32,32,1)]
+void Bloom (uint2 id : SV_DispatchThreadID)
+{	
+	uint sW, sH;
+    source.GetDimensions(sW, sH);
+	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
+	float2 texelSize = float2((float)1/sW, (float)1/sH);
 	
-//	dest[id + offset] = source.SampleLevel(_PointClamp, uv, 0)
+	if(firstPass == 1)
+	{
+		int3 ycbcrcolor = CnvRGBtoYCbCr(source.SampleLevel(_PointClamp, uv, 0));
+	
+		if(ycbcrcolor.x > bloomValue)
+			dest[id + offset] = source.SampleLevel(_PointClamp, uv, 0);
+		else
+			dest[id + offset] = float4(0, 0, 0, 1);
+	}
 
-//}
+	if(firstPass == 0)
+	{
+		if(!(bloom.SampleLevel(_PointClamp, uv, 0).x == 0 && bloom.SampleLevel(_PointClamp, uv, 0).y == 0 && bloom.SampleLevel(_PointClamp, uv, 0).z == 0))
+			dest[id+offset] = Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
+		else
+			dest[id+offset] = source.SampleLevel(_PointClamp, uv, 0);
+	}
+}
 
 [numthreads(32,32,1)]
 void ApplyCustom (uint2 id : SV_DispatchThreadID)
@@ -373,7 +387,7 @@ float4 ApplyKernel(uint2 id)
 	}
 }
 
- int3 CnvRBGtoYCbCr(float4 RBGColor) 
+ int3 CnvRGBtoYCbCr(float4 RBGColor) 
  {
 	int y;
 	int cb;
@@ -386,7 +400,7 @@ float4 ApplyKernel(uint2 id)
  	return int3(y, cb, cr);
  }
 
- float4 CnvYCbCrtoRBG(int3 YCbCr)
+ float4 CnvYCbCrtoRGB(int3 YCbCr)
  {
 	float r;
 	float g;
