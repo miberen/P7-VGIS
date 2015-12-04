@@ -11,7 +11,8 @@ public class CustomKernelAttempt : MonoBehaviour
     public FilterMode _filtMode;
     public RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
-    int[] kernel = {0, -1, 1, 0};
+    int[] kernel = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+
     void Start()
     {
         frame = new NPFrame2("stuff", 8);
@@ -26,7 +27,7 @@ public class CustomKernelAttempt : MonoBehaviour
         frame.SetTextureFormat = _textureFormat;
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
-        frame.Analyze(ref source);
+        frame.Analyze(source);
 
         frame.ApplyCustomKernel(source, donePow2, kernel);
 

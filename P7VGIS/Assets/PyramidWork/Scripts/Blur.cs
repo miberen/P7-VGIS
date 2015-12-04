@@ -30,7 +30,7 @@ public class Blur : MonoBehaviour
         frame.SetTextureFormat = _textureFormat;
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
-        frame.Analyze(ref source);
+        frame.Analyze(source);
         frame.GenerateSynthesis("Synth",_SynthesisMode, blurStrength);
 
         MakeBlur(donePow2);

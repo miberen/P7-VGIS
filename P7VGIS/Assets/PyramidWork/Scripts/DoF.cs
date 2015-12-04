@@ -55,7 +55,7 @@ public class DoF : MonoBehaviour
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
-        frame.Analyze(ref source);
+        frame.Analyze(source);
         frame.GenerateSynthesis("from1",_SynthesisMode, 1);
         frame.GenerateSynthesis("from2",_SynthesisMode, 2);
         frame.GenerateSynthesis("from3",_SynthesisMode, 3);

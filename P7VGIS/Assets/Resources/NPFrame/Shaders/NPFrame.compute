@@ -277,9 +277,9 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 		uint3 ycbcrcolor = CnvRGBtoYCbCr(source.SampleLevel(_LinearClamp, uv, 0));
 	
 		if(ycbcrcolor.x > bloomValue)
-			dest[id] = source.SampleLevel(_PointClamp, uv, 0);
+			dest[id-offset] = source.SampleLevel(_PointClamp, uv, 0);
 		else 
-			dest[id] = float4(0, 0, 0, 0);
+			dest[id-offset] = float4(0, 0, 0, 0);
 	}
 
 	if(firstPass == 0)
