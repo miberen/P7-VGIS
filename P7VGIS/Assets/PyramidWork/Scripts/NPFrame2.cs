@@ -254,21 +254,23 @@ public class NPFrame2
         // Set the textures and dispatch the shader to create analysis pyramid
         AnalyzeCall();
     }
-    // TODO: Fix default level, make it work with arbitrary images.
+
     /// <summary>
-    /// Generates a synthesis from a specified non-zero based source level of the analyzation pyramid.
+    /// Generates a synthesis from a specified non-zero based source level of the analyzation pyramid. 
     /// </summary>
-    /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
+    /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated. If left empty, will synthesize from lowest level.</param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
     /// <param name="synthMode">The filter to use for synthesising.</param>
-    public void GenerateSynthesis(string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline, int sourceLevel = 0, RenderTexture customTexture = null)
+    public void GenerateSynthesis(string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline, int sourceLevel = 0)
     {
+        if (sourceLevel == 0)
+            sourceLevel = AnalyzeList.Count;
+
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
         {
             // Add the new synthesis in the dictionary.
             _synthDic.Add(name, new Synthesis(sourceLevel));
-
             // Fill the list in synthesis.
             for (int i = 0; i < sourceLevel; i++)
             {
@@ -312,7 +314,72 @@ public class NPFrame2
         {
             SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
+    }
 
+    /// <summary>
+    /// Generates a synthesis from a specified texture. 
+    /// </summary>
+    /// <param name="targetLevel"></param>
+    /// <param name="name"> Name of the synthesis, used to access it later.</param>
+    /// <param name="synthMode">The filter to use for synthesising.</param>
+    /// <param name="customTexture"></param>
+    public void GenerateSynthesis(string name, RenderTexture customTexture, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline)
+    {
+        // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
+        if (!_synthDic.ContainsKey(name))
+        {
+            if (customTexture.width != customTexture.height)
+            {
+                int level = NextPow2(new Vector2(customTexture.width, customTexture.height));
+                _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height)) - level)));
+                Debug.Log(_synthDic[name].SourceLevel);
+            }
+
+            // Add the new synthesis in the dictionary.
+            _synthDic.Add(name, new Synthesis(sourceLevel));
+            // Fill the list in synthesis.
+            for (int i = 0; i < sourceLevel; i++)
+            {
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
+                _synthDic[name][i].enableRandomWrite = true;
+                _synthDic[name][i].filterMode = _filterMode;
+                _synthDic[name][i].Create();
+            }
+
+            _synthesiseIsInit = true;
+
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
+        }
+        // If it does exist but the size is different or if the screen size has changed, delete the old one and make a new one with the right size.
+        else if (_synthDic.ContainsKey(name) && (sourceLevel != _synthDic[name].SourceLevel || !_synthesiseIsInit))
+        {
+            foreach (RenderTexture rT in _synthDic[name].Pyramid)
+            {
+                if (rT.IsCreated())
+                {
+                    rT.Release();
+                }
+            }
+            _synthDic[name].Pyramid.Clear();
+
+            for (int i = 0; i < sourceLevel; i++)
+            {
+                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[sourceLevel - 1 - i].width, _analyzeList[sourceLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
+                _synthDic[name][i].enableRandomWrite = true;
+                _synthDic[name][i].filterMode = _filterMode;
+                _synthDic[name][i].Create();
+            }
+
+            _synthDic[name].SetSourceLevel = sourceLevel;
+            _synthesiseIsInit = true;
+
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
+        }
+        // if everything is good, just do the call to generate the synthesis in the list.
+        else
+        {
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
+        }
     }
 
     /// <summary>
@@ -451,8 +518,6 @@ public class NPFrame2
         {
             if (_pow2S.Contains((int) res.x))
             {
-                Debug.Log(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height))));
-                Debug.Log(_pow2S.IndexOf((int)res.x));
                 return 1 + _pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height))) - _pow2S.IndexOf((int)res.x);
             }
             else

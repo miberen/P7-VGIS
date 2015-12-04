@@ -25,6 +25,7 @@ public class TestImplement : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
     {   
+        frame.GenerateSynthesis("derp", new RenderTexture(127, 145, 0, RenderTextureFormat.ARGB32,RenderTextureReadWrite.Linear));
         frame.Analyze(ref source);
         frame2.Analyze(ref source);
         Graphics.Blit(source, destination);
