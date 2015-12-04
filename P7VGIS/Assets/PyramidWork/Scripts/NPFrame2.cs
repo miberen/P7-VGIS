@@ -261,7 +261,7 @@ public class NPFrame2
     /// <param name="sourceLevel"> The non-zero based analyzation level to synthesise from. ( This is also the amount of textures generated.</param>
     /// <param name="name"> Name of the synthesis, used to access it later.</param>
     /// <param name="synthMode">The filter to use for synthesising.</param>
-    public void GenerateSynthesis(string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline, int sourceLevel = 0)
+    public void GenerateSynthesis(string name, SynthesisMode synthMode = SynthesisMode.BiQuadBSpline, int sourceLevel = 0, RenderTexture customTexture = null)
     {
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
