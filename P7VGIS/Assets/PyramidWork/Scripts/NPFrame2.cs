@@ -334,6 +334,8 @@ public class NPFrame2
                 _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height)) - level)));
 
                 Debug.Log(_synthDic[name].SourceLevel);
+
+                MakePow2(customTexture, _synthDic[name][0]);
             }
 
             // Fill the list in synthesis.
