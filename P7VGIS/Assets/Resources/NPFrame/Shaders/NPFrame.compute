@@ -9,13 +9,16 @@
 #pragma kernel HistogramEq
 #pragma kernel ApplyCustom
 #pragma kernel Bloom
+#pragma kernel AddImages
+#pragma kernel Grayscale
  
 // Declare functions
 float4 ApplyKernel(uint2 id);
 int3 CnvRGBtoYCbCr(float4 RBGColor);
 float4 CnvYCbCrtoRGB(int3 YCbCr); 
 void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type);
-
+float CnvRGBtoIntesity(float4 RBGColor);
+float4 CnvRGBtoLum(float4 RBGColor);
 // Variables for changing billenear sampling mode
 SamplerState _LinearClamp;
 SamplerState _LinearRepeat;
@@ -28,7 +31,7 @@ RWTexture2D<float4> dest;
 //Texture2D<float4> infillRead;
 
 // Uniforms for DOF 
-float focalLength;
+float focalDistance;
 float focalSize;
 float aperture;
 float nearClipPlane;
@@ -46,8 +49,12 @@ int filterFactor;
 
 // Uniforms for bloom effect
 Texture2D<float4> bloom;
-uint bloomValue;
-float bloomStrength;
+float bloomValue;
+
+
+//uniforms for adding images
+Texture2D<float4> img1;
+Texture2D<float4> img2;
 
 // Offset to stop bleeding
 static uint2 offset = uint2(64, 64);
@@ -186,7 +193,7 @@ void DOF (uint2 id : SV_DispatchThreadID)
 	float2 uv = float2(Remap(id.x + offset.x, 0, sW, 0, dW) / dW, Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
 	if(firstPass == 1)
 	{
-		if((depth[id].r * farClipPlane <= focalLength + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalLength - focalSize + nearClipPlane))
+		if((depth[id].r * farClipPlane <= focalDistance + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalDistance - focalSize + nearClipPlane))
 		{
 			dest[id + offset] = DOF0.SampleLevel(_PointClamp, uv, 0);
 		}
@@ -235,7 +242,7 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 		histogram[i] = 0;
 		}
 
-		 histogram[CnvRGBtoYCbCr(source[id]).x] += 1; // histogram[CnvRGBtoYCbCr(source[id]).x] + 1;
+		 histogram[asint(CnvRGBtoIntesity(source[id])*256)] += 1; // histogram[CnvRGBtoYCbCr(source[id]).x] + 1;
 
 		 cumHistogram[0] = histogram[0];
 		
@@ -274,9 +281,9 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 	
 	if(firstPass == 1)
 	{
-		uint3 ycbcrcolor = CnvRGBtoYCbCr(source.SampleLevel(_LinearClamp, uv, 0));
+		float intensity = CnvRGBtoIntesity(source.SampleLevel(_LinearClamp, uv, 0));
 	
-		if(ycbcrcolor.x > bloomValue)
+		if(intensity > bloomValue)
 			dest[id-offset] = source.SampleLevel(_PointClamp, uv, 0);
 		else 
 			dest[id-offset] = float4(0, 0, 0, 0);
@@ -295,8 +302,20 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 void ApplyCustom (uint2 id : SV_DispatchThreadID)
 {
 
-	dest[id + offset] = ApplyKernel(id);
+	dest[id] = ApplyKernel(id);
 
+}
+
+[numthreads(32,32,1)]
+void AddImages(uint2 id : SV_DispatchThreadID)
+{
+	dest[id] = img1[id] + img2[id];
+}
+
+[numthreads(32,32,1)]
+void Grayscale(uint2 id : SV_DispatchThreadID)
+{
+	dest[id] = CnvRGBtoLum(source[id]);
 }
 
 void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type)
@@ -411,4 +430,22 @@ float4 ApplyKernel(uint2 id)
 	b = ((1*YCbCr.x)+(1.765*(YCbCr.y-128)))/256;
 
 	return float4(r, g, b, 1);
+ }
+
+  float CnvRGBtoIntesity(float4 RBGColor) 
+ {
+	float intensity;
+
+	intensity = (RBGColor.r + RBGColor.g + RBGColor.b)/3;
+	
+ 	return intensity;
+ }
+
+  float4 CnvRGBtoLum(float4 RBGColor) 
+ {
+	float luminosity;
+
+	luminosity = float4(RBGColor.r * 0.21, RBGColor.g * 0.72, RBGColor.b * 0.07, 1);
+	
+ 	return luminosity;
  }

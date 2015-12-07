@@ -4,6 +4,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Camera))]
 public class HistEq : MonoBehaviour
 {
+     // TODO: FIX - Compute shader color conversion + histograms as buffers
     private NPFrame2 frame;
     private RenderTexture donePow2;
     private bool firstPass = true;

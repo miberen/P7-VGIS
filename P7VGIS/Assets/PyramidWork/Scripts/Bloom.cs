@@ -4,26 +4,24 @@ using System.Collections.Generic;
 
 public class Bloom : MonoBehaviour
 {
-
+    //Variables used for Bloom - These are common for most effects
     private NPFrame2 frame;
     public RenderTexture donePow2;
     public RenderTexture bloomTexture;
     public RenderTexture origin;
     public NPFrame2.AnalysisMode _AnalysisMode;
     public NPFrame2.SynthesisMode _SynthesisMode;
-    public List<RenderTexture> Analstuff = new List<RenderTexture>();
-    public List<RenderTexture> Synthstuff = new List<RenderTexture>();
     public FilterMode _filtMode;
     public RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
-    [Range(0, 255)]
-    public int bloomValue = 180;
-    [Range(0.0f, 1.0f)]
-    public float bloomStrength= 0.5f;
+    [Range(0, 1)]
+    public float bloomValue = 0.5f;
+    [Range(1, 6)]
+    public int bloomStrength= 3;
 
     void Start()
     {
-        frame = new NPFrame2("Bloom", 8);
+        frame = new NPFrame2("Bloom", 7);
 
         donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;
@@ -50,9 +48,9 @@ public class Bloom : MonoBehaviour
         GenerateBloomTexture(origin);
 
         frame.Analyze(bloomTexture);
-        Analstuff = frame.AnalyzeList;
-        frame.GenerateSynthesis("Bloomsynth", _SynthesisMode, 4);
-        Synthstuff = frame.GetSynthesis("Bloomsynth").Pyramid;
+
+        frame.GenerateSynthesis("Bloomsynth", _SynthesisMode, bloomStrength);
+
         DoBloom(origin, frame.GetSynthesis("Bloomsynth")[frame.GetSynthesis("Bloomsynth").Count-1]);
 
         frame.MakeNPOT(donePow2);
@@ -76,7 +74,7 @@ public class Bloom : MonoBehaviour
     {
 
         frame.GetShader.SetInt("firstPass", 0);
-        frame.GetShader.SetInt("bloomValue", bloomValue);
+        frame.GetShader.SetFloat("bloomValue", bloomValue);
         frame.GetShader.SetFloat("bloomStrength", bloomStrength);
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "source", source);
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "bloom", bloom);
