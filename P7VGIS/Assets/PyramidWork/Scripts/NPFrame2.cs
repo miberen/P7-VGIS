@@ -316,6 +316,7 @@ public class NPFrame2
         }
     }
 
+    [Obsolete("Not working yet.")]
     /// <summary>
     /// Generates a synthesis from a specified texture. 
     /// </summary>
@@ -328,9 +329,9 @@ public class NPFrame2
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
         {
+            int size = NextPow2(new Vector2(customTexture.width, customTexture.height));
             if (!_pow2S.Contains(customTexture.width) || !_pow2S.Contains(customTexture.height))
-            {
-                int size = NextPow2(new Vector2(customTexture.width, customTexture.height));
+            {               
                 _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height)) - _pow2S.IndexOf(size))));
 
                 // Fill the list in synthesis.
