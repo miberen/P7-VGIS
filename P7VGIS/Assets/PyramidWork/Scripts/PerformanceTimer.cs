@@ -56,6 +56,9 @@ public class PTimer {
 	public double longestTime = 0;					// Longest time recorded (milliseconds)
 	public double shortestTime = Mathf.Infinity;	// Shortest time recorded (milliseconds)
 	public double averageTime = 0;					// Average time (milliseconds)
+    public double frameTime = 0;                    // Time since last frame
+    public double frameTimeTotal = 0;               // Total frame time
+    public double averageFrameTime = 0;             // Average frame time
 	public long measureCount = 0;					// Number of measurements made
 }
 
@@ -105,8 +108,11 @@ public class PerformanceTimer : MonoBehaviour {
 			timer.measureTime = timer.measureEndPoint - timer.measureStartPoint;
 			timer.measureCount++;
 			timer.processTimeTotal += timer.measureTime;
+		    timer.frameTime = Time.deltaTime * 1000;
+		    timer.frameTimeTotal += timer.frameTime;
 
 			timer.averageTime = timer.processTimeTotal / timer.measureCount;
+		    timer.averageFrameTime = timer.frameTimeTotal / timer.measureCount;
 
 			if (timer.measureTime > timer.longestTime) timer.longestTime = timer.measureTime;
 			if (timer.shortestTime > timer.measureTime) timer.shortestTime = timer.measureTime;
