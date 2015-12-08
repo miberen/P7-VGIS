@@ -58,23 +58,25 @@ Texture2D<float4> img2;
 // Offset to stop bleeding
 static uint2 offset = uint2(64, 64);
 
+//This functions takes a value within a defined range and maps it to another defined range
 float Remap(float value, float from1, float to1, float from2, float to2)
 {
 	return from2 + (value - from1) * (to2 - from2) / (to1 - from1);
 }
 
+//This function takes two pixels (float4) and lerps (linear interpolation) from a towards b based on the lerp factor
 float4 Lerp(float factor, float4 a, float4 b)
 {
 	return float4(factor * a.r + (1.0 - factor) * b.r, factor * a.g + (1.0 - factor) * b.g, factor * a.b + (1.0 - factor) * b.b, factor * a.a + (1.0 - factor) * b.a);
 }
 
+//Calculates an interpolation value. Used for the Depth of field, where value is the depth, scale is the farclipping plane and x and y is the beginning and end depth of the blur area. 
 float InterpolateValue(float value, float scale, float x, float y)
 {
 	return 1-((value*scale - x) / (y-x));
 }
 
-
-// Copies source into a new power of 2 destination texture, also pads the image with edge pixels
+// Copies source into a new power of 2 destination texture, also pads the image with edge pixels (clamping)
 [numthreads(32,32,1)]
 void MakePow2 (uint2 id : SV_DispatchThreadID)
 {
@@ -110,19 +112,18 @@ void MakePow2 (uint2 id : SV_DispatchThreadID)
 
 }
 
+//Take a PoT texture (with our offset) and makes into none PoT texture. Only works for native resolution textures.
 [numthreads(32, 32, 1)]
 void MakeNPow2 (uint2 id : SV_DispatchThreadID)
 {
     dest[id] = source[id + offset];
 }
 
-
+//2x2 Box filter analysis using one bilinear lookup
 [numthreads(32,32,1)]
 void Analyze2x2Box (uint2 id : SV_DispatchThreadID)
 {
-    //dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
-
-	uint dW, dH;
+  	uint dW, dH;
     dest.GetDimensions(dW, dH);
 	// Cast to float becasue HLSL is stupid and doesnt figure it out  by itself
 	float2 uv = float2((float)id.x/dW, (float)id.y/dH);
@@ -131,11 +132,10 @@ void Analyze2x2Box (uint2 id : SV_DispatchThreadID)
 	dest[id] = source.SampleLevel(_LinearClamp, uv + (texelSize / 2), 0);
 }
 
+//4x4 Box filter analysis using four bilinear lookups
 [numthreads(32,32,1)]
 void Analyze4x4Box (uint2 id : SV_DispatchThreadID)
 {
-    //dest[id] = (source[2*id+uint2(0.0,0.0)] + source[2*id+uint2(1.0,0.0)] + source[2*id+uint2(0.0,1.0)] + source[2*id+uint2(1.0,1.0)])/4;
-
 	uint dW, dH;
     dest.GetDimensions(dW, dH);
 	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
@@ -147,9 +147,9 @@ void Analyze4x4Box (uint2 id : SV_DispatchThreadID)
 			    source.SampleLevel(_LinearClamp, float2(uv.x, uv.y + texelSize.y), 0) +
 			    source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x, uv.y + texelSize.y), 0)
 			   ) / 4;
-	
 }
 
+//Biquadratic B-Spline analysis filter using four bilinear lookups
 [numthreads(32,32,1)]
 void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 {
@@ -166,6 +166,7 @@ void AnalyzeBQBS (uint2 id : SV_DispatchThreadID)
 			   ) / 4;
 }
 
+//Biquadratic B-Spline synthesis filters using one bilinear lookup (four times - one pr pixel). 
 [numthreads(32,32,1)]
 void SynthesizeBQBS (uint2 id : SV_DispatchThreadID)
 {	
@@ -181,6 +182,7 @@ void SynthesizeBQBS (uint2 id : SV_DispatchThreadID)
 	dest[2*id+uint2(1.0, 1.0)] = source.SampleLevel(_LinearClamp, float2(uv.x + texelSize.x - texelSize.x/4, uv.y + texelSize.y - texelSize.y/4), 0);
 }
 
+//Depth of field kernel
 [numthreads(32,32,1)]
 void DOF (uint2 id : SV_DispatchThreadID)
 {
@@ -188,7 +190,10 @@ void DOF (uint2 id : SV_DispatchThreadID)
     dest.GetDimensions(sW, sH);
 	uint dW, dH;
     DOF0.GetDimensions(dW, dH);
+	//Remap the UV's - not needed anymore because it now seems to work without again, but keepthing this we are sure it always works. 
 	float2 uv = float2(Remap(id.x + offset.x, 0, sW, 0, dW) / dW, Remap(id.y + offset.y, 0, sH, 0, dH) / dH);
+
+	//For the first pass of the kernel we copy over the pixels that are in focus, from the source texture
 	if(firstPass == 1)
 	{
 		if((depth[id].r * farClipPlane <= focalDistance + focalSize + nearClipPlane && depth[id].r * farClipPlane >= focalDistance - focalSize + nearClipPlane))
@@ -197,6 +202,7 @@ void DOF (uint2 id : SV_DispatchThreadID)
 		}
 	}
 
+	//For the other passes, each of the blur widths are linearly interpolated and for the last pass the remaining pixels are copied from the most blurred texture
 	if(firstPass == 0) 
 	{
 		if(depth[id].r * farClipPlane > blurPlanes.x  && depth[id].r * farClipPlane < blurPlanes.y)
@@ -217,12 +223,14 @@ void DOF (uint2 id : SV_DispatchThreadID)
 	}
 }
 
+//Blur kernel - a simple version which simply copies the pixels from one texture to another. To make it more interesting some gaussian or  other kernels could be implemented here as well. 
 [numthreads(32,32,1)]
 void Blur (uint2 id : SV_DispatchThreadID)
 {
 	dest[id+offset] = source[id+offset];
 }
 
+//Histogram equalization - doesn't work properly yet, needs some more work like buffers instead of arrays maybe.
 [numthreads(32,32,1)]
 void HistogramEq(uint2 id : SV_DispatchThreadID)
 {
@@ -269,6 +277,7 @@ void HistogramEq(uint2 id : SV_DispatchThreadID)
 	
 }
 
+//Bloom kernel used for the bloom effect
 [numthreads(32,32,1)]
 void Bloom (uint2 id : SV_DispatchThreadID)
 {	
@@ -277,6 +286,7 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 	float2 uv = float2((float)id.x/sW, (float)id.y/sH);
 	float2 texelSize = float2((float)1/sW, (float)1/sH);
 	
+	//For the first pass of the kernel the bloom texture is computed. For each pixel the intensity value is computed and if it is above the set threshold it is copied to the bloom texture. Every other pixel is black. 
 	if(firstPass == 1)
 	{
 		float intensity = CnvRGBtoIntesity(source.SampleLevel(_LinearClamp, uv, 0));
@@ -287,6 +297,7 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 			dest[id-offset] = float4(0, 0, 0, 0);
 	}
 
+	//When the bloomtexture has been computed the bloom texture is added to the source texture - and clamped automatically because HDR textures. 
 	if(firstPass == 0)
 	{
 		//if(!(bloom.SampleLevel(_PointClamp, uv, 0).w == 0))
@@ -296,26 +307,28 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 	}
 }
 
+//Applys a custom kernel to an image. 
 [numthreads(32,32,1)]
 void ApplyCustom (uint2 id : SV_DispatchThreadID)
 {
-
 	dest[id] = ApplyKernel(id);
-
 }
 
+//Adds two images together
 [numthreads(32,32,1)]
 void AddImages(uint2 id : SV_DispatchThreadID)
 {
 	dest[id] = img1[id] + img2[id];
 }
 
+//Converts an image to grayscale by Luminosity function
 [numthreads(32,32,1)]
 void Grayscale(uint2 id : SV_DispatchThreadID)
 {
 	dest[id] = CnvRGBtoLum(source[id]);
 }
 
+//Applies custom bilinear lookups - user has to be aware of using the right UV and Texelsize.  Support for this is yet to be added in the framework. 
 void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type)
 {
 	[call] switch(type) 
@@ -353,15 +366,19 @@ void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int 
 	}
 }
 
+//Applies a custom kernel to an image given an ID. Works by getting information from a structured buffer, which is managed through the framework. 
 float4 ApplyKernel(uint2 id)
 {
+	//initialize sum and get values from the structured buffer. (kernel)
 	float4 sum = 0;
 	int type = kernel[0];
 	int filterFactor = kernel[1];
 	int kernelSize = kernel[2];
 
+	//Switch case depending on kernel size (even or uneven)
 	[call] switch(type) 
 	{
+		//Even kernels (4x4)
 		case 0: 
 		{
 			int enumerator = asint(kernelSize/2);
@@ -379,6 +396,7 @@ float4 ApplyKernel(uint2 id)
 		 }
 		 break;
 
+		 //Uneven kernels (3x3)
 		 case 1: 
 		 {
 			int enumerator = asint(kernelSize/2);
@@ -396,6 +414,7 @@ float4 ApplyKernel(uint2 id)
 		 }
 		 break;
 
+		 //Default state will simply return pink. 
 		 default : 
 		 {
 		   return float4(0.5, 0, 0.5, 1);
@@ -404,46 +423,50 @@ float4 ApplyKernel(uint2 id)
 	}
 }
 
- int3 CnvRGBtoYCbCr(float4 RBGColor) 
- {
+//Converts an RGB color to the YCbCr color space (from 0-1 float to 0-255 int)
+int3 CnvRGBtoYCbCr(float4 RBGColor) 
+{
 	int y;
 	int cb;
 	int cr;
-
+	
 	y = ((RBGColor.r * 0.229 ) + (RBGColor.g * 0.587) + (RBGColor.b * 0.114)) * 256;
 	cb = 128 + (-0.169 * RBGColor.r * 256) + (-0.331 * RBGColor.g * 256) + (0.5 * RBGColor.b * 256);
 	cr = 128 + (0.5* RBGColor.r * 256) + (-0.419 * RBGColor.g * 256) + (-0.081 * RBGColor.b * 256);
+	
+	return int3(y, cb, cr);
+}
 
- 	return int3(y, cb, cr);
- }
-
- float4 CnvYCbCrtoRGB(int3 YCbCr)
- {
+//Converts from YCbCr color space to RGB (0-255 int to 0-1 float)
+float4 CnvYCbCrtoRGB(int3 YCbCr)
+{
 	float r;
 	float g;
 	float b;
-
+	
 	r = ((1*YCbCr.x)+(1.4*(YCbCr.z-128)))/256;
 	g = ((1*YCbCr.x)+(-0.343*(YCbCr.y-128))+(-0.711*(YCbCr.z-128)))/256;
 	b = ((1*YCbCr.x)+(1.765*(YCbCr.y-128)))/256;
-
+	
 	return float4(r, g, b, 1);
- }
+}
 
-  float CnvRGBtoIntesity(float4 RBGColor) 
- {
+//Converts RGB into intensity (one float value 0-1 range)
+ float CnvRGBtoIntesity(float4 RBGColor) 
+{
 	float intensity;
 
 	intensity = (RBGColor.r + RBGColor.g + RBGColor.b)/3;
-	
- 	return intensity;
- }
 
-  float4 CnvRGBtoLum(float4 RBGColor) 
- {
+	return intensity;
+}
+
+//Converts RGB into Luminosity(float4 -> float4) - used for making image grayscale
+float4 CnvRGBtoLum(float4 RBGColor) 
+{
 	float luminosity;
 
 	luminosity = float4(RBGColor.r * 0.21, RBGColor.g * 0.72, RBGColor.b * 0.07, 1);
-	
- 	return luminosity;
- }
+
+	return luminosity;
+}
