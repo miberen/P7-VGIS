@@ -19,7 +19,8 @@ float4 CnvYCbCrtoRGB(int3 YCbCr);
 void ApplyBilinearLookup(uint2 id, float2 uv, float2 texelSize, int lookup, int type);
 float CnvRGBtoIntesity(float4 RBGColor);
 float4 CnvRGBtoLum(float4 RBGColor);
-// Variables for changing billenear sampling mode
+
+// Variables for changing bilinear sampling mode
 SamplerState _LinearClamp;
 SamplerState _LinearRepeat;
 SamplerState _PointClamp;
@@ -28,7 +29,6 @@ SamplerState _PointClamp;
 Texture2D<float4> source;
 Texture2D<float4> depth;
 RWTexture2D<float4> dest;
-//Texture2D<float4> infillRead;
 
 // Uniforms for DOF 
 float focalDistance;
@@ -51,14 +51,12 @@ int filterFactor;
 Texture2D<float4> bloom;
 float bloomValue;
 
-
 //uniforms for adding images
 Texture2D<float4> img1;
 Texture2D<float4> img2;
 
 // Offset to stop bleeding
 static uint2 offset = uint2(64, 64);
-
 
 float Remap(float value, float from1, float to1, float from2, float to2)
 {
@@ -291,10 +289,10 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 
 	if(firstPass == 0)
 	{
-		if(!(bloom.SampleLevel(_PointClamp, uv, 0).w == 0))
+		//if(!(bloom.SampleLevel(_PointClamp, uv, 0).w == 0))
 			dest[id] = bloom.SampleLevel(_PointClamp, uv, 0) + source.SampleLevel(_LinearClamp, uv, 0); //Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
-		else
-			dest[id] = source.SampleLevel(_PointClamp, uv, 0);
+		//else
+			//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
 	}
 }
 

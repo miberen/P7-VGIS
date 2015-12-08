@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Camera))]
 public class DoF : MonoBehaviour
 {
-    //Variables used for blur - These are common for most effects
+    //Variables used for Depth of Field - These are common for most effects - Camera used to get access to near and far clipping planes. 
     private NPFrame2 frame;
     private Camera cam = null;
     private RenderTexture depth;
@@ -195,19 +195,23 @@ public class DoF : MonoBehaviour
             frame.GetShader.SetInt("firstPass", firstPass);
         }
 
-        //After the first pass is finished the different blur widths are applied to the image by iterating the process. This iteration is done in order to store less textures in memory. 
+        //After the first pass is finished the different blur widths are applied to the image by iterating the process. This iteration is done in order to keep track of less textures in the compute shader. 
         if (firstPass == 0)
         {
             frame.GetShader.SetInt("lastPass", lastPass);
             for (int i = 0; i < 3; i++)
             {
+                //We split the gradual blur into three areas of equal size based on the chosen aperture. We then calculate the depths at which we will apply the blur on both sides of the focal distance. We clamp the minimum distance to zero. 
                 float blurInterval = aperture / 3;
                 float far1 = cam.nearClipPlane + focalDistance + FocalSize + (blurInterval * i);
                 float far2 = cam.nearClipPlane + focalDistance + FocalSize + (blurInterval * (i + 1));
                 float near1 = Mathf.Clamp(cam.nearClipPlane + focalDistance - FocalSize - (blurInterval * i), 0, cam.farClipPlane);
                 float near2 = Mathf.Clamp(cam.nearClipPlane + focalDistance - FocalSize - (blurInterval * (i + 1)), 0, cam.farClipPlane);
 
+                //The computed values are sent to the compute shader as a float array and stored in a float4. 
                 frame.GetShader.SetFloats("blurPlanes", new float[] { far1, far2, near1, near2 });
+
+                //Depending on the iteration we dispatch the compute using the required textures to achieve different blur widths. On the first iteration we use the original image as PoT and the least blurred Synthesis pyramid and so forth. 
                 if (i == 0)
                 {
                     frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF0", frame.GetSynthesis("from1")[frame.GetSynthesis("from1").Count-1]);
@@ -220,6 +224,7 @@ public class DoF : MonoBehaviour
                     frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "DOF1", frame.GetSynthesis("from1")[frame.GetSynthesis("from1").Count - 1]);
                 }
 
+                //On the last pass we set lastPass to true (1) which will make the compute shader write the pixels that are outside any specified blur area, using the strongest blur width texture.
                 if (i == 2)
                 {
                     lastPass = 1;
@@ -229,6 +234,7 @@ public class DoF : MonoBehaviour
                     lastPass = 0;
                 }
 
+                //Here the shader is dispatched, and this dispatch is run for every iteration of the blur levels, so for every blur plane a dispatch is needed.
                 frame.GetShader.SetTexture(frame.GetShader.FindKernel("DOF"), "dest", donePow2);
                 frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3")[frame.GetSynthesis("from3").Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3")[frame.GetSynthesis("from3").Count - 1].height / 32), 1);
             }
