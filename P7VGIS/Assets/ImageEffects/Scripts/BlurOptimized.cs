@@ -9,6 +9,9 @@ namespace UnityStandardAssets.ImageEffects
     public class BlurOptimized : PostEffectsBase
     {
 
+        private PTimer timer;
+        private int counter;
+
         [Range(0, 2)]
         public int downsample = 1;
 
@@ -39,12 +42,22 @@ namespace UnityStandardAssets.ImageEffects
             return isSupported;
         }
 
+        public void Start()
+        {
+            // Variable for testing
+            timer = PerformanceTimer.CreateTimer(); // Create and assign timer
+        }
+
         public void OnDisable () {
             if (blurMaterial)
                 DestroyImmediate (blurMaterial);
         }
 
         public void OnRenderImage (RenderTexture source, RenderTexture destination) {
+            // For testing
+            if (counter > 60)
+                PerformanceTimer.MeasurePointBegin(timer);
+
             if (CheckResources() == false) {
                 Graphics.Blit (source, destination);
                 return;
@@ -88,6 +101,24 @@ namespace UnityStandardAssets.ImageEffects
             Graphics.Blit (rt, destination);
 
             RenderTexture.ReleaseTemporary (rt);
+
+            if (counter > 60)
+                PerformanceTimer.MeasurePointEnd(timer);
+
+            counter++;
+        }
+
+        void OnGUI()
+        {
+            GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + (Time.realtimeSinceStartup).ToString("f4") + "s\n" +
+                    "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
+                    "Frame number: " + timer.measureCount + "\n" +
+                    "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +
+                    "Shortest time: " + (timer.shortestTime).ToString("f4") + "ms\n" +
+                    "Longest time: " + (timer.longestTime).ToString("f4") + "ms\n" +
+                    "Average time. " + (timer.averageTime).ToString("f4") + "ms\n" +
+                    "Frame time: " + (timer.frameTime).ToString("f4") + "ms\n" +
+                    "Average frame time. " + (timer.averageFrameTime).ToString("f4") + "ms\n\n");
         }
     }
 }

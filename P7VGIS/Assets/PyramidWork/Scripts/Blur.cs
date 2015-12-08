@@ -3,6 +3,10 @@
 [RequireComponent(typeof(Camera))]
 public class Blur : MonoBehaviour
 {
+    // Variable for testing.
+    private PTimer timer;
+    private int counter;
+
     //Variables used for blur - These are common for most effects
     private NPFrame2 frame;
     public RenderTexture donePow2;
@@ -17,6 +21,9 @@ public class Blur : MonoBehaviour
 
     void Start()
     {
+        // Variable for testing
+        timer = PerformanceTimer.CreateTimer(); // Create and assign timer
+
         frame = new NPFrame2("Blur", 8);     
 
         donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
@@ -26,6 +33,10 @@ public class Blur : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
+        // For testing
+        if(counter > 60)
+        PerformanceTimer.MeasurePointBegin(timer);
+
         frame.SetTextureFormat = _textureFormat;
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
@@ -36,6 +47,25 @@ public class Blur : MonoBehaviour
         frame.MakeNPOT(donePow2);
 
         Graphics.Blit(frame.GetDoneNPOT, dest);
+
+        // For testing
+        if(counter > 60)
+        PerformanceTimer.MeasurePointEnd(timer);
+
+        counter++;
+    }
+
+    void OnGUI()
+    {
+        GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + (Time.realtimeSinceStartup).ToString("f4") + "s\n" +
+                "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
+                "Frame number: " + timer.measureCount + "\n" +
+                "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +
+                "Shortest time: " + (timer.shortestTime).ToString("f4") + "ms\n" +
+                "Longest time: " + (timer.longestTime).ToString("f4") + "ms\n" +
+                "Average time. " + (timer.averageTime).ToString("f4") + "ms\n" +
+                "Frame time: " + (timer.frameTime).ToString("f4") + "ms\n" +
+                "Average frame time. " + (timer.averageFrameTime).ToString("f4") + "ms\n\n");
     }
 
     /// <summary>
