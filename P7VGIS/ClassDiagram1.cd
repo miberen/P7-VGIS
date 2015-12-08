@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="NPFrame2">
+    <Position X="0.5" Y="0.5" Width="2.75" />
+    <Compartments>
+      <Compartment Name="Nested Types" Collapsed="false" />
+    </Compartments>
+    <NestedTypes>
+      <Class Name="NPFrame2.Synthesis" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Assets\PyramidWork\Scripts\NPFrame2.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Class>
+      <Enum Name="NPFrame2.AnalysisMode" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Assets\PyramidWork\Scripts\NPFrame2.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+      <Enum Name="NPFrame2.SynthesisMode" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Assets\PyramidWork\Scripts\NPFrame2.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Enum>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>JAEGBIgBAAMAEGEAIAEBOKBABBQQQgQgQAJBQYEgCAA=</HashCode>
+      <FileName>Assets\PyramidWork\Scripts\NPFrame2.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

@@ -328,24 +328,38 @@ public class NPFrame2
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
         {
-            if (customTexture.width != customTexture.height)
+            if (!_pow2S.Contains(customTexture.width) || !_pow2S.Contains(customTexture.height))
             {
-                int level = NextPow2(new Vector2(customTexture.width, customTexture.height));
-                _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height)) - level)));
+                int size = NextPow2(new Vector2(customTexture.width, customTexture.height));
+                _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height)) - _pow2S.IndexOf(size))));
 
-                Debug.Log(_synthDic[name].SourceLevel);
+                // Fill the list in synthesis.
+                for (int i = 0; i < targetLevel; i++)
+                {
+                    _synthDic[name].Pyramid.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(size) - i], _pow2S[_pow2S.IndexOf(size) - i], 0, _textureFormat, RenderTextureReadWrite.Linear));
+                    _synthDic[name][i].enableRandomWrite = true;
+                    _synthDic[name][i].filterMode = _filterMode;
+                    _synthDic[name][i].Create();
+                }
 
                 MakePow2(customTexture, _synthDic[name][0]);
             }
-
-            // Fill the list in synthesis.
-            for (int i = 0; i < targetLevel; i++)
+            else
             {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_analyzeList[targetLevel - 1 - i].width, _analyzeList[targetLevel - 1 - i].height, 0, _textureFormat, RenderTextureReadWrite.Linear));
-                _synthDic[name][i].enableRandomWrite = true;
-                _synthDic[name][i].filterMode = _filterMode;
-                _synthDic[name][i].Create();
+                _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextPow2(new Vector2(Screen.width, Screen.height)) - _pow2S.IndexOf(size))));
+
+                // Fill the list in synthesis.
+                for (int i = 0; i < targetLevel; i++)
+                {
+                    //_synthDic[name].Pyramid.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(size) - i], _pow2S[_pow2S.IndexOf(size) - i], 0, _textureFormat, RenderTextureReadWrite.Linear));
+                    _synthDic[name][i].enableRandomWrite = true;
+                    _synthDic[name][i].filterMode = _filterMode;
+                    _synthDic[name][i].Create();
+                }
+
             }
+
+
 
             _synthesiseIsInit = true;
 
