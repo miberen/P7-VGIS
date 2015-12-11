@@ -1,4 +1,5 @@
 ﻿#pragma kernel MakePow2
+#pragma kernel MakePow2BQBS
 #pragma kernel MakeNPow2
 #pragma kernel Analyze2x2Box
 #pragma kernel Analyze4x4Box
@@ -57,6 +58,7 @@ Texture2D<float4> img2;
 
 // Offset to stop bleeding
 static uint2 offset = uint2(64, 64);
+static uint2 directDownOffset = uint2(32, 32);
 
 //This functions takes a value within a defined range and maps it to another defined range
 float Remap(float value, float from1, float to1, float from2, float to2)
@@ -109,6 +111,43 @@ void MakePow2 (uint2 id : SV_DispatchThreadID)
 		dest[id + offset] = source[uint2(sW-1, id.y)];
 	//Actual image
     else dest[id + offset] = source[id];
+
+}
+
+// Copies source into a new power of 2 destination texture, also pads the image with edge pixels (clamping)
+[numthreads(32,32,1)]
+void MakePow2BQBS (uint2 id : SV_DispatchThreadID)
+{
+	uint sW, sH;
+    source.GetDimensions(sW, sH);	
+	uint dW, dH;
+    dest.GetDimensions(dW, dH);
+	// Cast to float becasue HLSL is stupid and doesn't figure it out  by itself
+	float2 uv = float2((float)(id.x)/sW, (float)(id.y)/sH);
+	float2 texelSize = float2((float)1/sW, (float)1/sH);
+	
+	//Actual image
+	dest[id + directDownOffset] = (source.SampleLevel(_LinearClamp, float2(uv * 2 + texelSize / 4), 0) +
+			    source.SampleLevel(_LinearClamp, float2(uv.x * 2 + texelSize.x - texelSize.x / 4, uv.y * 2 + texelSize.y / 4), 0) +
+				source.SampleLevel(_LinearClamp, float2(uv.x * 2 + texelSize.x / 8, uv.y * 2 + texelSize.y - texelSize.y / 4), 0) + 
+				source.SampleLevel(_LinearClamp, float2(uv.x * 2 + texelSize.x - texelSize.x / 4, uv.y * 2 + texelSize.y - texelSize.y / 4), 0)
+			   ) / 4;
+
+	// Copies BOTTOM LEFT corner pixel
+	if(id.x < directDownOffset.x && id.y < directDownOffset.y)
+		dest[id] = source.SampleLevel(_LinearClamp, float2(0, 0), 0);
+	// Copies BOTTOM RIGHT corner pixel
+	else if(id.x >= sW / 2 + directDownOffset.x && id.y < directDownOffset.y)
+		dest[id] = source.SampleLevel(_LinearClamp, float2(1, 0), 0);
+	// Copies TOP LEFT corner pixel
+	else if(id.x < directDownOffset.x && id.y >= sH / 2 + directDownOffset.y)
+		dest[id] = source.SampleLevel(_LinearClamp, float2(0, 1), 0);
+	// Copies BOTTOM EDGE
+	else if(id.y < directDownOffset.y)
+		dest[id] = source.SampleLevel(_LinearClamp, float2((uv.x * 2) - texelSize.x * directDownOffset.x * 2/*"Cuz reasons"*/, 0), 0);
+	// Copies LEFT EDGE
+	else if(id.x < directDownOffset.x)
+		dest[id] = source.SampleLevel(_LinearClamp, float2(0, (uv.y * 2) - texelSize.y * directDownOffset.y * 2/*"Citation needed"*/), 0);
 
 }
 
