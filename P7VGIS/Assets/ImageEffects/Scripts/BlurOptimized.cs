@@ -3,14 +3,15 @@ using UnityEngine;
 
 namespace UnityStandardAssets.ImageEffects
 {
-    [ExecuteInEditMode]
     [RequireComponent (typeof(Camera))]
     [AddComponentMenu ("Image Effects/Blur/Blur (Optimized)")]
     public class BlurOptimized : PostEffectsBase
     {
 
         private PTimer timer;
-        private int counter;
+        private int counter = 0;
+        float realTime = 0;
+        float subtractTime = 0;
 
         [Range(0, 2)]
         public int downsample = 1;
@@ -54,9 +55,15 @@ namespace UnityStandardAssets.ImageEffects
         }
 
         public void OnRenderImage (RenderTexture source, RenderTexture destination) {
-            // For testing
+
+            if (counter < 60)
+                subtractTime = Time.realtimeSinceStartup;
             if (counter > 60)
-                PerformanceTimer.MeasurePointBegin(timer);
+            {
+                if (counter < 1061)
+                    PerformanceTimer.MeasurePointBegin(timer);
+            }
+
 
             if (CheckResources() == false) {
                 Graphics.Blit (source, destination);
@@ -103,14 +110,21 @@ namespace UnityStandardAssets.ImageEffects
             RenderTexture.ReleaseTemporary (rt);
 
             if (counter > 60)
-                PerformanceTimer.MeasurePointEnd(timer);
+            {
+                if (counter < 1061)
+                {
+                    realTime = Time.realtimeSinceStartup - subtractTime;
+                    PerformanceTimer.MeasurePointEnd(timer);
+                }
+            }
+           
 
             counter++;
         }
 
         void OnGUI()
         {
-            GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + (Time.realtimeSinceStartup).ToString("f4") + "s\n" +
+            GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + realTime + "s\n" +
                     "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
                     "Frame number: " + timer.measureCount + "\n" +
                     "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +

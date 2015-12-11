@@ -4,6 +4,11 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Camera))]
 public class DoF : MonoBehaviour
 {
+    private PTimer timer;
+    private int counter = 0;
+    float realTime = 0;
+    float subtractTime = 0;
+
     //Variables used for Depth of Field - These are common for most effects - Camera used to get access to near and far clipping planes. 
     private NPFrame2 frame;
     private Camera cam = null;
@@ -44,7 +49,8 @@ public class DoF : MonoBehaviour
     private int listIndex = 0;
 
     void Start()
-    {        
+    {
+        timer = PerformanceTimer.CreateTimer();
         //line = GetComponent<LineRenderer>();
         frame = new NPFrame2("DoF", 4);
         cam = GetComponent<Camera>();
@@ -59,6 +65,14 @@ public class DoF : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
+        if (counter < 60)
+            subtractTime = Time.realtimeSinceStartup;
+        if (counter > 60)
+        {
+            if (counter < 1061)
+                PerformanceTimer.MeasurePointBegin(timer);
+        }
+
         frame.SetTextureFormat = _textureFormat;
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
@@ -102,6 +116,18 @@ public class DoF : MonoBehaviour
             default:
                 break;
         }
+
+        if (counter > 60)
+        {
+            if (counter < 1061)
+            {
+                realTime = Time.realtimeSinceStartup - subtractTime;
+                PerformanceTimer.MeasurePointEnd(timer);
+            }
+        }
+
+
+        counter++;
     }
 
     //Entire update function used for presentation purposes to toggle between different levels in different pyramids
@@ -239,5 +265,18 @@ public class DoF : MonoBehaviour
                 frame.GetShader.Dispatch(frame.GetShader.FindKernel("DOF"), (int)Mathf.Ceil(frame.GetSynthesis("from3")[frame.GetSynthesis("from3").Count - 1].width / 32), (int)Mathf.Ceil(frame.GetSynthesis("from3")[frame.GetSynthesis("from3").Count - 1].height / 32), 1);
             }
         }
+    }
+
+    void OnGUI()
+    {
+        GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + realTime + "s\n" +
+                "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
+                "Frame number: " + timer.measureCount + "\n" +
+                "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +
+                "Shortest time: " + (timer.shortestTime).ToString("f4") + "ms\n" +
+                "Longest time: " + (timer.longestTime).ToString("f4") + "ms\n" +
+                "Average time. " + (timer.averageTime).ToString("f4") + "ms\n" +
+                "Frame time: " + (timer.frameTime).ToString("f4") + "ms\n" +
+                "Average frame time. " + (timer.averageFrameTime).ToString("f4") + "ms\n\n");
     }
 }
