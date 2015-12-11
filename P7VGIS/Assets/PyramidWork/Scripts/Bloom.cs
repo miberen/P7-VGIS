@@ -4,6 +4,11 @@ using System.Collections.Generic;
 
 public class Bloom : MonoBehaviour
 {
+    private PTimer timer;
+    private int counter = 0;
+    float realTime = 0;
+    float subtractTime = 0;
+
     //Variables used for Bloom - These are common for most effects
     private NPFrame2 frame;
     public RenderTexture donePow2;
@@ -24,6 +29,7 @@ public class Bloom : MonoBehaviour
 
     void Start()
     {
+        timer = PerformanceTimer.CreateTimer();
         frame = new NPFrame2("Bloom", 7);
 
         //Textures used for the bloom effect, currently more than needed are used - probably. 
@@ -43,6 +49,14 @@ public class Bloom : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
+        if (counter < 60)
+            subtractTime = Time.realtimeSinceStartup;
+        if (counter > 60)
+        {
+            if (counter < 1061)
+                PerformanceTimer.MeasurePointBegin(timer);
+        }
+
         frame.SetTextureFormat = _textureFormat;
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
@@ -60,6 +74,18 @@ public class Bloom : MonoBehaviour
         frame.MakeNPOT(donePow2);
 
         Graphics.Blit(frame.GetDoneNPOT, dest);
+
+        if (counter > 60)
+        {
+            if (counter < 1061)
+            {
+                realTime = Time.realtimeSinceStartup - subtractTime;
+                PerformanceTimer.MeasurePointEnd(timer);
+            }
+        }
+
+
+        counter++;
     }
 
     /// <summary>
@@ -93,5 +119,18 @@ public class Bloom : MonoBehaviour
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "dest", donePow2);
 
         frame.GetShader.Dispatch(frame.GetShader.FindKernel("Bloom"), (int)Mathf.Ceil(bloom.width / 32), (int)Mathf.Ceil(bloom.height / 32), 1);
+    }
+
+    void OnGUI()
+    {
+        GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + realTime + "s\n" +
+                "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
+                "Frame number: " + timer.measureCount + "\n" +
+                "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +
+                "Shortest time: " + (timer.shortestTime).ToString("f4") + "ms\n" +
+                "Longest time: " + (timer.longestTime).ToString("f4") + "ms\n" +
+                "Average time. " + (timer.averageTime).ToString("f4") + "ms\n" +
+                "Frame time: " + (timer.frameTime).ToString("f4") + "ms\n" +
+                "Average frame time. " + (timer.averageFrameTime).ToString("f4") + "ms\n\n");
     }
 }

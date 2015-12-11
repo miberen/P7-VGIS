@@ -5,7 +5,9 @@ public class Blur : MonoBehaviour
 {
     // Variable for testing.
     private PTimer timer;
-    private int counter;
+    private int counter = 0;
+    float realTime = 0;
+    float subtractTime = 0;
 
     //Variables used for blur - These are common for most effects
     private NPFrame2 frame;
@@ -33,9 +35,13 @@ public class Blur : MonoBehaviour
 
     void OnRenderImage(RenderTexture source, RenderTexture dest)
     {
-        // For testing
-        if(counter > 60)
-        PerformanceTimer.MeasurePointBegin(timer);
+        if (counter < 60)
+            subtractTime = Time.realtimeSinceStartup;
+        if (counter > 60)
+        {
+            if (counter < 1061)
+                PerformanceTimer.MeasurePointBegin(timer);
+        }
 
         frame.SetTextureFormat = _textureFormat;
         frame.SetFilterMode = _filtMode;
@@ -49,15 +55,22 @@ public class Blur : MonoBehaviour
         Graphics.Blit(frame.GetDoneNPOT, dest);
 
         // For testing
-        if(counter > 60)
-        PerformanceTimer.MeasurePointEnd(timer);
+        if (counter > 60)
+        {
+            if (counter < 1061)
+            {
+                realTime = Time.realtimeSinceStartup - subtractTime;
+                PerformanceTimer.MeasurePointEnd(timer);
+            }
+        }
+
 
         counter++;
     }
 
     void OnGUI()
     {
-        GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + (Time.realtimeSinceStartup).ToString("f4") + "s\n" +
+        GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + realTime + "s\n" +
                 "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
                 "Frame number: " + timer.measureCount + "\n" +
                 "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +

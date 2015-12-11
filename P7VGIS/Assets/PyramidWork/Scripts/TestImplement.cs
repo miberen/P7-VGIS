@@ -1,37 +1,57 @@
 ﻿using UnityEngine;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 
 public class TestImplement : MonoBehaviour
 {
-    public List<RenderTexture> anal; 
-    public List<RenderTexture> synth;
-    public List<RenderTexture> synthg;
+    private PTimer timer;
+    private int counter = 0;
+    float realTime = 0;
+    float subtractTime = 0;
 
     private NPFrame2 frame;
-    private NPFrame2 frame2;
-	// Use this for initialization
+
     void Awake()
     {
-        frame = new NPFrame2("main", 3);
-        frame2 = new NPFrame2("main2", new Vector2(512,512));
-    }
-
-    void Start()
-    {
-        
+        timer = PerformanceTimer.CreateTimer(); // Create and assign timer
+        frame = new NPFrame2("main", 7);
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {   
-        frame.GenerateSynthesis("derp", new RenderTexture(127, 145, 0, RenderTextureFormat.ARGB32,RenderTextureReadWrite.Linear));
+    {
+        if (counter < 60)
+            subtractTime = Time.realtimeSinceStartup;
+        if (counter > 60)
+        {
+            if (counter < 1061)
+                PerformanceTimer.MeasurePointBegin(timer);
+        }
+
         frame.Analyze(source);
-        frame2.Analyze(source);
+        frame.GenerateSynthesis("LOL", sourceLevel: 2);
         Graphics.Blit(source, destination);
+
+        if (counter > 60)
+        {
+            if (counter < 1061)
+            {
+                realTime = Time.realtimeSinceStartup - subtractTime;
+                PerformanceTimer.MeasurePointEnd(timer);
+            }
+        }
+
+
+        counter++;
     }
-	// Update is called once per frame
-	void Update () {
-	    
-	}
+
+    void OnGUI()
+    {
+        GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + realTime + "s\n" +
+                "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
+                "Frame number: " + timer.measureCount + "\n" +
+                "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +
+                "Shortest time: " + (timer.shortestTime).ToString("f4") + "ms\n" +
+                "Longest time: " + (timer.longestTime).ToString("f4") + "ms\n" +
+                "Average time. " + (timer.averageTime).ToString("f4") + "ms\n" +
+                "Frame time: " + (timer.frameTime).ToString("f4") + "ms\n" +
+                "Average frame time. " + (timer.averageFrameTime).ToString("f4") + "ms\n\n");
+    }
 }

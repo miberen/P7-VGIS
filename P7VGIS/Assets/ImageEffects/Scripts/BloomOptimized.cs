@@ -8,6 +8,10 @@ namespace UnityStandardAssets.ImageEffects
     [AddComponentMenu ("Image Effects/Bloom and Glow/Bloom (Optimized)")]
     public class BloomOptimized : PostEffectsBase
     {
+        private PTimer timer;
+        private int counter = 0;
+        float realTime = 0;
+        float subtractTime = 0;
 
         public enum Resolution
 		{
@@ -50,6 +54,11 @@ namespace UnityStandardAssets.ImageEffects
             return isSupported;
         }
 
+        void Start()
+        {
+            timer = PerformanceTimer.CreateTimer();
+        }
+
         void OnDisable ()
 		{
             if (fastBloomMaterial)
@@ -58,6 +67,14 @@ namespace UnityStandardAssets.ImageEffects
 
         void OnRenderImage (RenderTexture source, RenderTexture destination)
 		{
+            if (counter < 60)
+                subtractTime = Time.realtimeSinceStartup;
+            if (counter > 60)
+            {
+                if (counter < 1061)
+                    PerformanceTimer.MeasurePointBegin(timer);
+            }
+
             if (CheckResources() == false)
 			{
                 Graphics.Blit (source, destination);
@@ -104,6 +121,29 @@ namespace UnityStandardAssets.ImageEffects
             Graphics.Blit (source, destination, fastBloomMaterial, 0);
 
             RenderTexture.ReleaseTemporary (rt);
+
+            if (counter > 60)
+            {
+                if (counter < 1061)
+                {
+                    realTime = Time.realtimeSinceStartup - subtractTime;
+                    PerformanceTimer.MeasurePointEnd(timer);
+                }
+            }
+            counter++;
+        }
+
+        void OnGUI()
+        {
+            GUI.Label(new Rect(0, 0, 250, 500), "Total time: " + realTime + "s\n" +
+                    "Processing time: " + (timer.processTimeTotal).ToString("f4") + "ms\n" +
+                    "Frame number: " + timer.measureCount + "\n" +
+                    "Current time: " + (timer.measureTime).ToString("f4") + "ms\n" +
+                    "Shortest time: " + (timer.shortestTime).ToString("f4") + "ms\n" +
+                    "Longest time: " + (timer.longestTime).ToString("f4") + "ms\n" +
+                    "Average time. " + (timer.averageTime).ToString("f4") + "ms\n" +
+                    "Frame time: " + (timer.frameTime).ToString("f4") + "ms\n" +
+                    "Average frame time. " + (timer.averageFrameTime).ToString("f4") + "ms\n\n");
         }
     }
 }
