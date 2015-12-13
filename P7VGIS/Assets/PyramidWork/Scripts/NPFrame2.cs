@@ -79,7 +79,7 @@ public class NPFrame2
     private ComputeShader _cSMain;
 
     // Options for how the analysis / synthesis should be done and also properties of the RenderTextures
-    private AnalysisMode _analysisMode = AnalysisMode.Box2x2;
+    private AnalysisMode _analysisMode = AnalysisMode.BiQuadBSpline;
     private SynthesisMode _synthesisMode = SynthesisMode.BiQuadBSpline;
     private FilterMode _filterMode = FilterMode.Bilinear;
     private RenderTextureFormat _textureFormat = RenderTextureFormat.ARGB32;
@@ -121,7 +121,7 @@ public class NPFrame2
     /// <param name="name">The name used to access this framework in the MasterList.</param>
     /// <param name="analyzeRes">The target resolution of the analysis.</param>
     public NPFrame2(string name, Vector2 analyzeRes)
-    {  
+    {
         BasicInit(name);
         _levels = LevelFromRes(analyzeRes);
     }
@@ -236,7 +236,7 @@ public class NPFrame2
     {
         if (_done != null)
         {
-            MakeNonPow2Call( source,  _done);
+            MakeNonPow2Call(source, _done);
             return _done;
         }
         Debug.Log("You dun goofed: _done texture not initialized");
@@ -247,17 +247,17 @@ public class NPFrame2
     /// Handles creating a power of 2 image and starting analyzastion.
     /// </summary>
     /// <param name="source">The texture to be analysed.</param>
-    public void Analyze( RenderTexture source)
+    public void Analyze(RenderTexture source)
     {
         // Checks if the analyze list is created or if the screen size has changed. If it has then reinit the list
         if (!_analyseIsInit || _lastScreenSize != new Vector2(Screen.width, Screen.height))
         {
-            InitAnalyze( source);
+            InitAnalyze(source);
             _synthesiseIsInit = false;
         }
 
         // Create the power of 2 texture.
-        MakePow2Call(source,  _analyzeList);
+        MakePow2Call(source, _analyzeList);
 
         // Set the textures and dispatch the shader to create analysis pyramid
         AnalyzeCall();
@@ -279,14 +279,12 @@ public class NPFrame2
         // Check if a synthesis with the supplied name exists, if it does not make it and fill it out.
         if (!_synthDic.ContainsKey(name))
         {
-            
-
             // Add the new synthesis in the dictionary.
             _synthDic.Add(name, new Synthesis(sourceLevel));
             // Fill the list in synthesis.
-            for (int i = 0; i < sourceLevel + sampleCompensation ; i++)
+            for (int i = 0; i < sourceLevel; i++)
             {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(_analyzeList[_analyzeList.Count - 1].width) + 1 + i], _pow2S[_pow2S.IndexOf(_analyzeList[_analyzeList.Count - 1].width) + 1 + i], 0, _textureFormat, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(_analyzeList[sourceLevel - sampleCompensation].width) + 1 + i], _pow2S[_pow2S.IndexOf(_analyzeList[sourceLevel - sampleCompensation].width) + 1 + i], 0, _textureFormat, RenderTextureReadWrite.Linear));
                 _synthDic[name][i].enableRandomWrite = true;
                 _synthDic[name][i].filterMode = _filterMode;
                 _synthDic[name][i].Create();
@@ -294,7 +292,7 @@ public class NPFrame2
 
             _synthesiseIsInit = true;
 
-            SynthesizeCall(_synthDic[name], sourceLevel + sampleCompensation, synthMode);
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
         // If it does exist but the size is different or if the screen size has changed, delete the old one and make a new one with the right size.
         else if (_synthDic.ContainsKey(name) && (sourceLevel != _synthDic[name].SourceLevel || !_synthesiseIsInit))
@@ -304,13 +302,13 @@ public class NPFrame2
                 if (rT.IsCreated())
                 {
                     rT.Release();
-                }             
+                }
             }
             _synthDic[name].Pyramid.Clear();
 
-            for (int i = 0; i < sourceLevel + sampleCompensation; i++)
+            for (int i = 0; i < sourceLevel; i++)
             {
-                _synthDic[name].Pyramid.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(_analyzeList[_analyzeList.Count - 1].width) + 1 + i], _pow2S[_pow2S.IndexOf(_analyzeList[_analyzeList.Count - 1].width) + 1 + i], 0, _textureFormat, RenderTextureReadWrite.Linear));
+                _synthDic[name].Pyramid.Add(new RenderTexture(_pow2S[_pow2S.IndexOf(_analyzeList[sourceLevel - sampleCompensation].width) + 1 + i], _pow2S[_pow2S.IndexOf(_analyzeList[sourceLevel - sampleCompensation].width) + 1 + i], 0, _textureFormat, RenderTextureReadWrite.Linear));
                 _synthDic[name][i].enableRandomWrite = true;
                 _synthDic[name][i].filterMode = _filterMode;
                 _synthDic[name][i].Create();
@@ -319,12 +317,12 @@ public class NPFrame2
             _synthDic[name].SetSourceLevel = sourceLevel;
             _synthesiseIsInit = true;
 
-            SynthesizeCall(_synthDic[name], sourceLevel + sampleCompensation, synthMode);
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
         // if everything is good, just do the call to generate the synthesis in the list.
         else
         {
-            SynthesizeCall(_synthDic[name], sourceLevel + sampleCompensation, synthMode);
+            SynthesizeCall(_synthDic[name], sourceLevel, synthMode);
         }
     }
 
@@ -343,7 +341,7 @@ public class NPFrame2
         {
             int size = NextHigherPow2(new Vector2(customTexture.width, customTexture.height));
             if (!_pow2S.Contains(customTexture.width) || !_pow2S.Contains(customTexture.height))
-            {               
+            {
                 _synthDic.Add(name, new Synthesis(_pow2S.IndexOf(NextHigherPow2(new Vector2(Screen.width, Screen.height)) - _pow2S.IndexOf(size))));
 
                 // Fill the list in synthesis.
@@ -424,10 +422,10 @@ public class NPFrame2
                 _masterDic.Add(name, this);
             }
             catch (Exception e)
-            {              
+            {
                 Debug.Log(e);
             }
-            
+
             // Load the compute shader.
             _cSMain = (ComputeShader)Resources.Load("NPFrame/Shaders/NPFrame");
             // Compute the list of POTs, used to determine what resolution texture to copy image into.
@@ -439,7 +437,7 @@ public class NPFrame2
     /// Initializes the entire analysis pyramid. ( As well as done textures ATM ).
     /// </summary>
     /// <param name="source">The source texture to be used for analysation</param>
-    private void InitAnalyze( RenderTexture source)
+    private void InitAnalyze(RenderTexture source)
     {
         int size;
         // Release previous textures if any
@@ -463,7 +461,7 @@ public class NPFrame2
             _analyzeList[i].filterMode = _filterMode;
             _analyzeList[i].Create();
         }
-        
+
         // Init done textures 
         _donePow2 = new RenderTexture(size, size, 0, _textureFormat, RenderTextureReadWrite.Linear);
         _donePow2.enableRandomWrite = true;
@@ -497,10 +495,10 @@ public class NPFrame2
             {
                 final = _pow2S[_pow2S.IndexOf(i)];
                 return final;
-            }                
+            }
         }
         Debug.Log("Fuck you");
-        return final;       
+        return final;
     }
 
     public int NextLowerPow2(Vector2 resolution)
@@ -531,7 +529,7 @@ public class NPFrame2
     {
         // Declares a compute buffer to hold the kernel and other needed parameters. Its the size of the array
         // plus 3 other variables, the strie is the size of an int and its a standard structured buffer. 
-        
+
         ComputeBuffer buf = new ComputeBuffer(kernel.Length + 3, sizeof(int), ComputeBufferType.Default);
 
         // Create a new array and put in all the needed variables.
@@ -567,7 +565,7 @@ public class NPFrame2
     {
         if (Screen.width > res.x && Screen.height > res.y)
         {
-            if (_pow2S.Contains((int) res.x))
+            if (_pow2S.Contains((int)res.x))
             {
                 return 1 + _pow2S.IndexOf(NextHigherPow2(new Vector2(Screen.width, Screen.height))) - _pow2S.IndexOf((int)res.x);
             }
@@ -657,7 +655,7 @@ public class NPFrame2
         _cSMain.SetTexture(_cSMain.FindKernel("MakePow2"), "dest", dest);
 
         //Dispatch the compute shader 
-        _cSMain.Dispatch(_cSMain.FindKernel("MakePow2"), (int)Mathf.Ceil(dest.width/ 32), (int)Mathf.Ceil(dest.height / 32), 1);
+        _cSMain.Dispatch(_cSMain.FindKernel("MakePow2"), (int)Mathf.Ceil(dest.width / 32), (int)Mathf.Ceil(dest.height / 32), 1);
     }
 
     /// <summary>
@@ -665,8 +663,8 @@ public class NPFrame2
     /// </summary>
     /// <param name="source"></param>
     /// <param name="destination"></param>
-    private void MakeNonPow2Call( RenderTexture source,  RenderTexture destination)
-    {          
+    private void MakeNonPow2Call(RenderTexture source, RenderTexture destination)
+    {
         //Set the shader uniforms
         _cSMain.SetTexture(_cSMain.FindKernel("MakeNPow2"), "source", source);
         _cSMain.SetTexture(_cSMain.FindKernel("MakeNPow2"), "dest", destination);
@@ -707,34 +705,44 @@ public class NPFrame2
         // Use default value if no value is set ( To be changed later to just synthesize all the way up if nothing else is specific)
         if (levels == 0) levels = _levels;
 
+        int sampleCompensation = !_UseHigherPoT ? 1 : 0;
+        //Debug.Log(sampleCompensation);
+
         // If it is the first level just copy over the top level analysis. (This could be optimized slightly by just directly using it from the analysis list)
         if (levels == 1)
         {
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
+            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel - sampleCompensation]);
             _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[0]);
 
             if (synth.Pyramid[0].width > 32 || synth.Pyramid[0].height > 32)
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[0].width / 32), (int)Mathf.Ceil(synth.Pyramid[0].height / 32), 1);
+                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel - sampleCompensation].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel - sampleCompensation].height / 32), 1);
             else
                 _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
         }
-
-        for (int i = 0; i < levels - 1; i++)
+        else
         {
-            if (i == 0)
+            for (int i = 0; i < levels; i++)
             {
-                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel]);
-                _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i]);
+                if (i == 0)
+                {
+                    _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", _analyzeList[synth.SourceLevel - sampleCompensation]);
+                    _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i]);
 
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel].height / 32), 1);
+                    //Debug.Log("Source: " + _analyzeList[synth.SourceLevel - sampleCompensation].width + " Destination: " + synth.Pyramid[i].width);
+
+                    _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel - sampleCompensation].width / 32), (int)Mathf.Ceil(_analyzeList[synth.SourceLevel - sampleCompensation].height / 32), 1);
+                }
+                else
+                {
+                    _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i-1]);
+                    _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i]);
+
+                    if (synth.Pyramid[i-1].width > 32 || synth.Pyramid[i-1].height > 32)
+                        _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i-1].width / 32), (int)Mathf.Ceil(synth.Pyramid[i-1].height / 32), 1);
+                    else
+                        _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
+                }
             }
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "source", synth.Pyramid[i]);
-            _cSMain.SetTexture(_cSMain.FindKernel(GetEnumDescription(synthMode)), "dest", synth.Pyramid[i + 1]);
-
-            if (synth.Pyramid[i].width > 32 || synth.Pyramid[i].height > 32)
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), (int)Mathf.Ceil(synth.Pyramid[i].width / 32), (int)Mathf.Ceil(synth.Pyramid[i].height / 32), 1);
-            else
-                _cSMain.Dispatch(_cSMain.FindKernel(GetEnumDescription(synthMode)), 1, 1, 1);
         }
     }
 
@@ -750,7 +758,7 @@ public class NPFrame2
         _cSMain.SetTexture(_cSMain.FindKernel("ApplyCustom"), "dest", destination);
         _cSMain.SetBuffer(_cSMain.FindKernel("ApplyCustom"), "kernel", buf);
 
-        _cSMain.Dispatch(_cSMain.FindKernel("ApplyCustom"), (int)Mathf.Ceil(source.width / 32 +1), (int)Mathf.Ceil(source.height / 32 + 1), 1);
+        _cSMain.Dispatch(_cSMain.FindKernel("ApplyCustom"), (int)Mathf.Ceil(source.width / 32 + 1), (int)Mathf.Ceil(source.height / 32 + 1), 1);
     }
-        
+
 }

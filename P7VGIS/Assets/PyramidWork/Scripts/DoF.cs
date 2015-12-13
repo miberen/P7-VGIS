@@ -17,13 +17,13 @@ public class DoF : MonoBehaviour
     public NPFrame2.AnalysisMode _AnalysisMode;
     public NPFrame2.SynthesisMode _SynthesisMode;
     public FilterMode _filtMode;
-    public RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
+    public RenderTextureFormat _textureFormat = RenderTextureFormat.ARGB32;
 
     //this stuff is for show & tell @ presentation stuff - to see in inspector
     //LineRenderer line;
     //Vector3 offsetUP = new Vector3(0.33f, 0.33f, 0);
-    public List<RenderTexture> AnalysisList = new List<RenderTexture>();
-    public List<RenderTexture> SynthesisList = new List<RenderTexture>();
+    //public List<RenderTexture> AnalysisList = new List<RenderTexture>();
+    //public List<RenderTexture> SynthesisList = new List<RenderTexture>();
 
     [Tooltip("Enabling Fixed mode makes the focal length static and independant of where you are looking")]
     public bool FixedDepthofField = false;
@@ -81,41 +81,41 @@ public class DoF : MonoBehaviour
         Graphics.Blit(source, depth, new Material(Shader.Find("Custom/DepthShader")));
 
         frame.Analyze(source);
-        AnalysisList = frame.AnalyzeList;
+        //AnalysisList = frame.AnalyzeList;
 
         //Generate three synthesis pyramids to achieve stronger blur widths
         frame.GenerateSynthesis("from1",_SynthesisMode, 1);
         frame.GenerateSynthesis("from2",_SynthesisMode, 2);
         frame.GenerateSynthesis("from3",_SynthesisMode, 3);
-        SynthesisList = frame.GetSynthesis("from1").Pyramid;
+        //SynthesisList = frame.GetSynthesis("from1").Pyramid;
 
         DOF(donePow2);
 
         frame.MakeNPOT(donePow2);
 
-        //Graphics.Blit(frame.GetDoneNPOT, dest);
+        Graphics.Blit(frame.GetDoneNPOT, dest);
 
         //Switch for toggling between the different pyramids for presentation purposes
-        switch (listIndex)
-        {
-            case 0:
-                Graphics.Blit(frame.GetDoneNPOT, dest);
-                break;
-            case 1:
-                Graphics.Blit(AnalysisList[imageIndex], dest);
-                break;
-            case 2:
-                Graphics.Blit(frame.GetSynthesis("from3").Pyramid[imageIndex], dest);
-                break;
-            case 3:
-                Graphics.Blit(frame.GetSynthesis("from2").Pyramid[imageIndex], dest);
-                break;
-            case 4:
-                Graphics.Blit(frame.GetSynthesis("from1").Pyramid[imageIndex], dest);
-                break;
-            default:
-                break;
-        }
+        //switch (listIndex)
+        //{
+        //    case 0:
+        //        Graphics.Blit(frame.GetDoneNPOT, dest);
+        //        break;
+        //    case 1:
+        //        Graphics.Blit(AnalysisList[imageIndex], dest);
+        //        break;
+        //    case 2:
+        //        Graphics.Blit(frame.GetSynthesis("from3").Pyramid[imageIndex], dest);
+        //        break;
+        //    case 3:
+        //        Graphics.Blit(frame.GetSynthesis("from2").Pyramid[imageIndex], dest);
+        //        break;
+        //    case 4:
+        //        Graphics.Blit(frame.GetSynthesis("from1").Pyramid[imageIndex], dest);
+        //        break;
+        //    default:
+        //        break;
+        //}
 
         if (counter > 60)
         {
@@ -131,45 +131,45 @@ public class DoF : MonoBehaviour
     }
 
     //Entire update function used for presentation purposes to toggle between different levels in different pyramids
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Keypad8))
-        {
-            imageIndex += 1;
-            if (imageIndex >= AnalysisList.Count)
-                imageIndex = 0;
+    //void Update()
+    //{
+    //    if (Input.GetKeyDown(KeyCode.Keypad8))
+    //    {
+    //        imageIndex += 1;
+    //        if (imageIndex >= AnalysisList.Count)
+    //            imageIndex = 0;
             
-        }
+    //    }
 
-        if (Input.GetKeyDown(KeyCode.Keypad2))
-        {
-            imageIndex -= 1;
-            if (imageIndex >= AnalysisList.Count)
-                imageIndex = 0;
-            if (imageIndex == -1)
-                imageIndex = AnalysisList.Count - 1;
+    //    if (Input.GetKeyDown(KeyCode.Keypad2))
+    //    {
+    //        imageIndex -= 1;
+    //        if (imageIndex >= AnalysisList.Count)
+    //            imageIndex = 0;
+    //        if (imageIndex == -1)
+    //            imageIndex = AnalysisList.Count - 1;
 
-        }
+    //    }
 
-        if (Input.GetKeyDown(KeyCode.Keypad6))
-        {
-            listIndex += 1;
-            imageIndex = 0;
-            if (listIndex >= 5)
-                listIndex = 0;
+    //    if (Input.GetKeyDown(KeyCode.Keypad6))
+    //    {
+    //        listIndex += 1;
+    //        imageIndex = 0;
+    //        if (listIndex >= 5)
+    //            listIndex = 0;
 
-        }
+    //    }
 
-        if (Input.GetKeyDown(KeyCode.Keypad4))
-        {
-            listIndex -= 1;
-            imageIndex = 0;
-            if (listIndex >= 5)
-                listIndex = 0;
-            if (listIndex == -1)
-                listIndex = 4;
-        }
-    }
+    //    if (Input.GetKeyDown(KeyCode.Keypad4))
+    //    {
+    //        listIndex -= 1;
+    //        imageIndex = 0;
+    //        if (listIndex >= 5)
+    //            listIndex = 0;
+    //        if (listIndex == -1)
+    //            listIndex = 4;
+    //    }
+    //}
 
     //Used for dynamic depth of field, where the blur changes depending on the distance to the object you are looking at. Calculated using a raycast in the forwards direction from the camera to the far clipping plane. If nothing is hit, a default focal distance is set. The focal distance is lerped with the focus speed to control how fast the focus should adjust.
     void OnPostRender()

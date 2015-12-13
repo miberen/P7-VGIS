@@ -931,6 +931,8 @@ GameObject:
   - 114: {fileID: 343042328}
   - 114: {fileID: 343042327}
   - 114: {fileID: 343042329}
+  - 114: {fileID: 343042330}
+  - 114: {fileID: 343042331}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -949,9 +951,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4975a6e437fc3b149a8cd508ce5bdd69, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  threshold: .200000003
-  intensity: 1.24000001
-  blurSize: 2.91000009
+  threshold: .5
+  intensity: .819999993
+  blurSize: 5.5
   blurIterations: 3
   blurType: 0
   fastBloomShader: {fileID: 4800000, guid: 68a00c837b82e4c6d92e7da765dc5f1d, type: 3}
@@ -1005,7 +1007,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 0
+  m_HDR: 1
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: .0219999999
@@ -1033,14 +1035,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10d60d34d11b4f046858ee0549f446a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  donePow2: {fileID: 0}
+  done: {fileID: 0}
   bloomTexture: {fileID: 0}
   origin: {fileID: 0}
   _AnalysisMode: 2
   _SynthesisMode: 0
   _filtMode: 0
-  _textureFormat: 9
-  bloomValue: .330000013
+  _textureFormat: 0
+  bloomValue: .5
   bloomStrength: 5
 --- !u!114 &343042327
 MonoBehaviour:
@@ -1086,13 +1088,11 @@ MonoBehaviour:
   _AnalysisMode: 2
   _SynthesisMode: 0
   _filtMode: 0
-  _textureFormat: 9
-  AnalysisList: []
-  SynthesisList: []
+  _textureFormat: 0
   FixedDepthofField: 0
   focalDistance: 5.4000001
   FocalSize: .100000001
-  aperture: 3.5999999
+  aperture: 20
   focusSpeed: 4
 --- !u!114 &343042329
 MonoBehaviour:
@@ -1100,11 +1100,46 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 343042319}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8ade2e5da5c5a04392473a445a36159, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  AnalysisList: []
+  SynthesisList: []
+--- !u!114 &343042330
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 343042319}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97c9b1edb49743a4da3207435c875177, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  donePow2: {fileID: 0}
+  _AnalysisMode: 2
+  _SynthesisMode: 0
+  _filtMode: 0
+  _textureFormat: 0
+  blurStrength: 3
+--- !u!114 &343042331
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 343042319}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fc6bde01469c7b4badee5362f191d96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  downsample: 1
+  blurSize: 2
+  blurIterations: 2
+  blurType: 0
+  blurShader: {fileID: 4800000, guid: f9d5fa183cd6b45eeb1491f74863cd91, type: 3}
 --- !u!1 &362698998
 GameObject:
   m_ObjectHideFlags: 0
@@ -1895,6 +1930,26 @@ MeshFilter:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 678471885}
   m_Mesh: {fileID: 4300002, guid: f7424bf3330e0f04c90e88b8d618a17f, type: 3}
+--- !u!1 &684044593 stripped
+GameObject:
+  m_PrefabParentObject: {fileID: 147258, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+  m_PrefabInternal: {fileID: 1336019401}
+--- !u!4 &684044594 stripped
+Transform:
+  m_PrefabParentObject: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+  m_PrefabInternal: {fileID: 1336019401}
+--- !u!135 &684044595
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 684044593}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: .5
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &721235331
 GameObject:
   m_ObjectHideFlags: 0
@@ -2456,10 +2511,8 @@ GameObject:
   - 114: {fileID: 874970659}
   - 114: {fileID: 874970661}
   - 114: {fileID: 874970663}
-  - 114: {fileID: 874970667}
   - 114: {fileID: 874970665}
   - 114: {fileID: 874970666}
-  - 114: {fileID: 874970668}
   m_Layer: 0
   m_Name: FirstPersonCharacter
   m_TagString: MainCamera
@@ -2473,17 +2526,13 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 874970658}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 97c9b1edb49743a4da3207435c875177, type: 3}
+  m_Script: {fileID: 11500000, guid: a8ade2e5da5c5a04392473a445a36159, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  donePow2: {fileID: 0}
-  _AnalysisMode: 1
-  _SynthesisMode: 0
-  _filtMode: 0
-  _textureFormat: 9
-  blurStrength: 3
+  AnalysisList: []
+  SynthesisList: []
 --- !u!81 &874970660
 AudioListener:
   m_ObjectHideFlags: 0
@@ -2491,7 +2540,7 @@ AudioListener:
     type: 2}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 874970658}
-  m_Enabled: 1
+  m_Enabled: 0
 --- !u!114 &874970661
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2500,14 +2549,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 874970658}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7fc6bde01469c7b4badee5362f191d96, type: 3}
+  m_Script: {fileID: 11500000, guid: 97c9b1edb49743a4da3207435c875177, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  downsample: 2
-  blurSize: 3.21000004
-  blurIterations: 2
-  blurType: 0
-  blurShader: {fileID: 4800000, guid: f9d5fa183cd6b45eeb1491f74863cd91, type: 3}
+  donePow2: {fileID: 0}
+  _AnalysisMode: 2
+  _SynthesisMode: 0
+  _filtMode: 0
+  _textureFormat: 0
+  blurStrength: 4
 --- !u!20 &874970662
 Camera:
   m_ObjectHideFlags: 0
@@ -2551,9 +2601,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 874970658}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1685f7b526094bc469dbb5abf15bbdc3, type: 3}
+  m_Script: {fileID: 11500000, guid: 10d60d34d11b4f046858ee0549f446a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  done: {fileID: 0}
+  bloomTexture: {fileID: 0}
+  origin: {fileID: 0}
+  _AnalysisMode: 2
+  _SynthesisMode: 0
+  _filtMode: 0
+  _textureFormat: 0
+  bloomValue: .76700002
+  bloomStrength: 5
 --- !u!4 &874970664
 Transform:
   m_ObjectHideFlags: 0
@@ -2578,16 +2637,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   donePow2: {fileID: 0}
-  _AnalysisMode: 1
+  _AnalysisMode: 2
   _SynthesisMode: 0
   _filtMode: 0
-  _textureFormat: 9
-  AnalysisList: []
-  SynthesisList: []
+  _textureFormat: 0
   FixedDepthofField: 0
   focalDistance: 2
-  FocalSize: .699999988
-  aperture: 6.9000001
+  FocalSize: .800000012
+  aperture: 4
   focusSpeed: 4
 --- !u!114 &874970666
 MonoBehaviour:
@@ -2597,66 +2654,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 874970658}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bd70d448b18cfbc46af26466f752332c, type: 3}
+  m_Script: {fileID: 11500000, guid: 7fc6bde01469c7b4badee5362f191d96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  visualizeFocus: 0
-  focalLength: 4
-  focalSize: 1.25
-  aperture: 7.98999977
-  focalTransform: {fileID: 0}
-  maxBlurSize: 2
-  highResolution: 0
+  downsample: 2
+  blurSize: 3
+  blurIterations: 2
   blurType: 0
-  blurSampleCount: 2
-  nearBlur: 0
-  foregroundOverlap: 1
-  dofHdrShader: {fileID: 4800000, guid: acd613035ff3e455e8abf23fdc8c8c24, type: 3}
-  dx11BokehShader: {fileID: 4800000, guid: d8e82664aa8686642a424c88ab10164a, type: 3}
-  dx11BokehThreshold: .5
-  dx11SpawnHeuristic: .0874999985
-  dx11BokehTexture: {fileID: 0}
-  dx11BokehScale: 1.20000005
-  dx11BokehIntensity: 2.5
---- !u!114 &874970667
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 874970658}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fcbeaef23eba05e429ea4dd4d965abc3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  edgesPoT_h: {fileID: 0}
-  edgesPoT_v: {fileID: 0}
-  donePoT: {fileID: 0}
-  gray: {fileID: 0}
-  _AnalysisMode: 0
-  _SynthesisMode: 0
-  _filtMode: 0
-  _textureFormat: 9
---- !u!114 &874970668
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 874970658}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 10d60d34d11b4f046858ee0549f446a7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  donePow2: {fileID: 0}
-  bloomTexture: {fileID: 0}
-  origin: {fileID: 0}
-  _AnalysisMode: 2
-  _SynthesisMode: 0
-  _filtMode: 0
-  _textureFormat: 9
-  bloomValue: .976000011
-  bloomStrength: 5
+  blurShader: {fileID: 4800000, guid: f9d5fa183cd6b45eeb1491f74863cd91, type: 3}
 --- !u!4 &895199385
 Transform:
   m_ObjectHideFlags: 0
@@ -2930,6 +2935,7 @@ Transform:
   - {fileID: 1681198497}
   - {fileID: 1049658213}
   - {fileID: 2047033527}
+  - {fileID: 684044594}
   m_Father: {fileID: 0}
   m_RootOrder: 3
 --- !u!4 &966447554
@@ -4018,6 +4024,82 @@ MeshFilter:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1330508355}
   m_Mesh: {fileID: 4300000, guid: 80b1ef51d0d4f7e41975e06fb23629af, type: 3}
+--- !u!1001 &1336019401
+Prefab:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 962328857}
+    m_Modifications:
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalPosition.x
+      value: 10.4399996
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalPosition.y
+      value: .800999999
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalPosition.z
+      value: -1.39999998
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_RootOrder
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2305534, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_ProbeAnchor
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 147258, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_StaticEditorFlags
+      value: 4294967295
+      objectReference: {fileID: 0}
+    - target: {fileID: 2305534, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LightmapIndexDynamic
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2305534, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LightmapTilingOffsetDynamic.x
+      value: .03125
+      objectReference: {fileID: 0}
+    - target: {fileID: 2305534, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LightmapTilingOffsetDynamic.y
+      value: .046875
+      objectReference: {fileID: 0}
+    - target: {fileID: 2305534, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LightmapTilingOffsetDynamic.z
+      value: .171875
+      objectReference: {fileID: 0}
+    - target: {fileID: 2305534, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_LightmapTilingOffsetDynamic.w
+      value: .5078125
+      objectReference: {fileID: 0}
+    - target: {fileID: 147258, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+      propertyPath: m_Name
+      value: DemoBallGreen (1)
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 18247928, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+    - {fileID: 5439864, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+  m_ParentPrefab: {fileID: 100100000, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
+  m_IsPrefabParent: 0
 --- !u!1 &1347281290
 GameObject:
   m_ObjectHideFlags: 0
@@ -4190,7 +4272,7 @@ Prefab:
     m_Modifications:
     - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
       propertyPath: m_LocalPosition.x
-      value: -9.98999977
+      value: -9.53999996
       objectReference: {fileID: 0}
     - target: {fileID: 462944, guid: 5fde0189dcc464f619ae535980671e96, type: 2}
       propertyPath: m_LocalPosition.y

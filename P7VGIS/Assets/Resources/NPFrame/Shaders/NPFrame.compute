@@ -78,6 +78,12 @@ float InterpolateValue(float value, float scale, float x, float y)
 	return 1-((value*scale - x) / (y-x));
 }
 
+//Calculates a color for image addition for none HDR textures (makes sure it is between 0 and 1)
+float4 AKoBlend(float4 imageX, float4 imageY)
+{
+	return float4(1-((1-imageX.r)*(1-imageY.r)), 1-((1-imageX.g)*(1-imageY.g)), 1-((1-imageX.b)*(1-imageY.b)), 1-((1-imageX.a)*(1-imageY.a)));
+}
+
 // Copies source into a new power of 2 destination texture, also pads the image with edge pixels (clamping)
 [numthreads(32,32,1)]
 void MakePow2 (uint2 id : SV_DispatchThreadID)
@@ -328,19 +334,19 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 	//For the first pass of the kernel the bloom texture is computed. For each pixel the intensity value is computed and if it is above the set threshold it is copied to the bloom texture. Every other pixel is black. 
 	if(firstPass == 1)
 	{
-		float intensity = CnvRGBtoIntesity(source.SampleLevel(_LinearClamp, uv, 0));
+		float intensity = CnvRGBtoIntesity(source.SampleLevel(_PointClamp, uv, 0));
 	
 		if(intensity > bloomValue)
-			dest[id-offset] = source.SampleLevel(_PointClamp, uv, 0);
+			dest[id] = source.SampleLevel(_PointClamp, uv, 0);
 		else 
-			dest[id-offset] = float4(0, 0, 0, 0);
+			dest[id] = float4(0, 0, 0, 0);
 	}
 
 	//When the bloomtexture has been computed the bloom texture is added to the source texture - and clamped automatically because HDR textures. 
 	if(firstPass == 0)
 	{
 		//if(!(bloom.SampleLevel(_PointClamp, uv, 0).w == 0))
-			dest[id] = bloom.SampleLevel(_PointClamp, uv, 0) + source.SampleLevel(_LinearClamp, uv, 0); //Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
+			dest[id] = AKoBlend(bloom.SampleLevel(_PointClamp, uv, 0), source.SampleLevel(_LinearClamp, uv, 0)); //Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
 		//else
 			//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
 	}

@@ -18,7 +18,7 @@ public class Blur : MonoBehaviour
     public RenderTextureFormat _textureFormat = RenderTextureFormat.DefaultHDR;
 
     //Variable to control at which level to synthesise from - higher value = more blur - synth from lower level
-    [Range(1, 6)]
+    [Range(1, 4)]
     public int blurStrength = 2;
 
     void Start()
@@ -26,7 +26,7 @@ public class Blur : MonoBehaviour
         // Variable for testing
         timer = PerformanceTimer.CreateTimer(); // Create and assign timer
 
-        frame = new NPFrame2("Blur", 8);     
+        frame = new NPFrame2("Blur", 5);     
 
         donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         donePow2.enableRandomWrite = true;

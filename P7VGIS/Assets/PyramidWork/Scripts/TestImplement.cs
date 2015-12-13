@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 public class TestImplement : MonoBehaviour
 {
@@ -7,12 +8,15 @@ public class TestImplement : MonoBehaviour
     float realTime = 0;
     float subtractTime = 0;
 
+    public List<RenderTexture> AnalysisList = new List<RenderTexture>();
+    public List<RenderTexture> SynthesisList = new List<RenderTexture>();
+
     private NPFrame2 frame;
 
     void Awake()
     {
         timer = PerformanceTimer.CreateTimer(); // Create and assign timer
-        frame = new NPFrame2("main", 7);
+        frame = new NPFrame2("main", new Vector2(64,64));
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)
@@ -26,7 +30,9 @@ public class TestImplement : MonoBehaviour
         }
 
         frame.Analyze(source);
-        frame.GenerateSynthesis("LOL", sourceLevel: 2);
+        AnalysisList = frame.AnalyzeList;
+        frame.GenerateSynthesis("LOL", sourceLevel: 4);
+        SynthesisList = frame.GetSynthesis("LOL").Pyramid;
         Graphics.Blit(source, destination);
 
         if (counter > 60)

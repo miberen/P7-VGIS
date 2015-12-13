@@ -11,7 +11,7 @@ public class Bloom : MonoBehaviour
 
     //Variables used for Bloom - These are common for most effects
     private NPFrame2 frame;
-    public RenderTexture donePow2;
+    public RenderTexture done;
     public RenderTexture bloomTexture;
     public RenderTexture origin;
     public NPFrame2.AnalysisMode _AnalysisMode;
@@ -34,15 +34,15 @@ public class Bloom : MonoBehaviour
 
         //Textures used for the bloom effect, currently more than needed are used - probably. 
         // TODO: This could be reduced I believe by using the source image non PoT and generate the bloom texture from that and make that PoT and continue from there. 
-        donePow2 = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
-        donePow2.enableRandomWrite = true;
-        donePow2.Create();
+        done = new RenderTexture(Screen.width, Screen.height, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
+        done.enableRandomWrite = true;
+        done.Create();
 
         origin = new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         origin.enableRandomWrite = true;
         origin.Create();
 
-        bloomTexture =  new RenderTexture(frame.GetNativePOTRes, frame.GetNativePOTRes, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
+        bloomTexture =  new RenderTexture(Screen.width, Screen.height, 0, frame.GetTextureFormat, RenderTextureReadWrite.Linear);
         bloomTexture.enableRandomWrite = true;
         bloomTexture.Create();
     }
@@ -61,19 +61,19 @@ public class Bloom : MonoBehaviour
         frame.SetFilterMode = _filtMode;
         frame.SetAnalysisMode = _AnalysisMode;
 
-        frame.MakePow2(source, origin);
+        //frame.MakePow2(source, origin);
 
-        GenerateBloomTexture(origin);
+        GenerateBloomTexture(source);
 
         frame.Analyze(bloomTexture);
 
         frame.GenerateSynthesis("Bloomsynth", _SynthesisMode, bloomStrength);
 
-        DoBloom(origin, frame.GetSynthesis("Bloomsynth")[frame.GetSynthesis("Bloomsynth").Count-1]);
+        frame.MakeNPOT(frame.GetSynthesis("Bloomsynth")[frame.GetSynthesis("Bloomsynth").Count - 1]);
 
-        frame.MakeNPOT(donePow2);
+        DoBloom(source, frame.GetDoneNPOT);
 
-        Graphics.Blit(frame.GetDoneNPOT, dest);
+        Graphics.Blit(done, dest);
 
         if (counter > 60)
         {
@@ -101,7 +101,7 @@ public class Bloom : MonoBehaviour
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "dest", bloomTexture);
         frame.GetShader.SetFloat("bloomValue", bloomValue);
 
-        frame.GetShader.Dispatch(frame.GetShader.FindKernel("Bloom"), (int)Mathf.Ceil(source.width / 32), (int)Mathf.Ceil(source.height / 32), 1);
+        frame.GetShader.Dispatch(frame.GetShader.FindKernel("Bloom"), (int)Mathf.Ceil(source.width / 32)+1, (int)Mathf.Ceil(source.height / 32) +1, 1);
     }
 
     /// <summary>
@@ -116,9 +116,9 @@ public class Bloom : MonoBehaviour
         //frame.GetShader.SetFloat("bloomStrength", bloomStrength);
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "source", source);
         frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "bloom", bloom);
-        frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "dest", donePow2);
+        frame.GetShader.SetTexture(frame.GetShader.FindKernel("Bloom"), "dest", done);
 
-        frame.GetShader.Dispatch(frame.GetShader.FindKernel("Bloom"), (int)Mathf.Ceil(bloom.width / 32), (int)Mathf.Ceil(bloom.height / 32), 1);
+        frame.GetShader.Dispatch(frame.GetShader.FindKernel("Bloom"), (int)Mathf.Ceil(bloom.width / 32) +1, (int)Mathf.Ceil(bloom.height / 32) +1, 1);
     }
 
     void OnGUI()
