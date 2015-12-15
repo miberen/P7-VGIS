@@ -1,4 +1,6 @@
-﻿//using UnityEngine;
+﻿//Old version of framework, kept for later reference for now
+
+//using UnityEngine;
 //using System;
 //using System.Collections;
 //using System.Collections.Generic;

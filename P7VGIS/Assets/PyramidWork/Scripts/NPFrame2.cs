@@ -74,7 +74,7 @@ public class NPFrame2
     private int _levels;
     private bool _analyseIsInit = false;
     private bool _synthesiseIsInit = false;
-    private bool _UseHigherPoT = false;
+    private bool _UseHigherPoT = true;
     private Vector2 _lastScreenSize;
     private ComputeShader _cSMain;
 
@@ -497,7 +497,7 @@ public class NPFrame2
                 return final;
             }
         }
-        Debug.Log("Fuck you");
+        Debug.Log("Error 404");
         return final;
     }
 
@@ -514,7 +514,7 @@ public class NPFrame2
                 return final;
             }
         }
-        Debug.Log("Fuck you");
+        Debug.Log("Error 404");
         return final;
     }
 
@@ -542,7 +542,7 @@ public class NPFrame2
         else
             newArray[1] = filterFactor;
         // Lenght of the kernel
-        newArray[2] = kernel.Length;
+        newArray[2] = (int)Math.Sqrt(kernel.Length);
         // Copy in the kernel to the new array
         Array.Copy(kernel, 0, newArray, 3, kernel.Length);
 

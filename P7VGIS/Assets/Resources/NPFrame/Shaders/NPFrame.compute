@@ -346,7 +346,7 @@ void Bloom (uint2 id : SV_DispatchThreadID)
 	if(firstPass == 0)
 	{
 		//if(!(bloom.SampleLevel(_PointClamp, uv, 0).w == 0))
-			dest[id] = AKoBlend(bloom.SampleLevel(_PointClamp, uv, 0), source.SampleLevel(_LinearClamp, uv, 0)); //Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
+			dest[id] = AKoBlend(bloom.SampleLevel(_PointClamp, uv, 0), source.SampleLevel(_PointClamp, uv, 0)); //Lerp(bloomStrength, source.SampleLevel(_PointClamp, uv, 0), bloom.SampleLevel(_PointClamp, uv, 0));
 		//else
 			//dest[id] = source.SampleLevel(_PointClamp, uv, 0);
 	}
@@ -428,9 +428,9 @@ float4 ApplyKernel(uint2 id)
 		{
 			int enumerator = asint(kernelSize/2);
 			int index = 3;
-			for(int i = -enumerator+1; i <= enumerator+1; i++)
+			for(int i = -enumerator+1; i <= enumerator; i++)
 			{
-				for(int j = -enumerator+1; j <= enumerator+1; j++)
+				for(int j = -enumerator+1; j <= enumerator; j++)
 				{
 					sum += source[id + int2(j, i)] * kernel[index];
 					index++;
@@ -511,7 +511,7 @@ float4 CnvRGBtoLum(float4 RBGColor)
 {
 	float luminosity;
 
-	luminosity = float4(RBGColor.r * 0.21, RBGColor.g * 0.72, RBGColor.b * 0.07, 1);
+	luminosity = RBGColor.r * 0.21 + RBGColor.g * 0.72 + RBGColor.b * 0.07;
 
-	return luminosity;
+	return float4(luminosity, luminosity, luminosity, 1);
 }
