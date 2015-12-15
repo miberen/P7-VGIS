@@ -5,7 +5,7 @@
 //using System.Collections;
 //using System.Collections.Generic;
 
-//public class NpFrame : MonoBehaviour {
+//public class NpFrameOld : MonoBehaviour {
 
 //    #region Public Properties
 
